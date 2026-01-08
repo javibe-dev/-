@@ -272,27 +272,39 @@
         .nav-arrow { font-size: 0.7rem; opacity: 0.5; }
 
         /* Main Content */
-        /* Sidebar Collapsed State */
+        /* Sidebar Collapsed State - HIDE COMPLETELY */
         .sidebar.collapsed {
-            width: 80px;
+            width: 0;
+            padding: 0;
+            margin: 0;
+            border: none;
+            transform: translateX(-100%);
+            overflow: hidden;
         }
-        .sidebar.collapsed .logo-text,
-        .sidebar.collapsed .logo-subtitle,
-        .sidebar.collapsed .nav-label,
-        .sidebar.collapsed .nav-item span,
-        .sidebar.collapsed .sidebar-footer p {
-            display: none;
-        }
-        .sidebar.collapsed .nav-item-content {
+        
+        /* Menu Toggle Button (Hamburger) */
+        .menu-toggle {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            display: flex; /* Always show toggle on mobile/spoof */
+            align-items: center;
             justify-content: center;
-            padding: 10px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            transition: all 0.3s ease;
         }
-        .sidebar.collapsed .nav-item-content i {
-            margin-right: 0;
-            font-size: 1.2rem;
-        }
-        .sidebar.collapsed .collapse-btn {
-            justify-content: center;
+
+        .menu-toggle:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.05);
         }
 
         .main-content {
@@ -990,7 +1002,7 @@
     const headerUsername = document.getElementById('headerUsername');
     const avatarLetter = document.getElementById('avatarLetter');
     const sidebar = document.getElementById('sidebar');
-    const menuToggle = document.getElementById('menuToggle');
+// menuToggle already declared above; no need to re-declare
 
     // Mobile menu toggle
     if (menuToggle && sidebar) {
@@ -1082,21 +1094,15 @@
 
     // --- SIDEBAR COLLAPSE LOGIC ---
     const collapseBtn = document.getElementById('collapseBtn');
+    const menuToggle = document.getElementById('menuToggle');
     // sidebar is already declared above; no need to redeclare
-    if (collapseBtn && sidebar) {
-        collapseBtn.onclick = () => {
-            sidebar.classList.toggle('collapsed');
-            const icon = collapseBtn.querySelector('i');
-            const span = collapseBtn.querySelector('span');
-            if (sidebar.classList.contains('collapsed')) {
-                icon.className = 'fas fa-angles-right';
-                span.style.display = 'none';
-            } else {
-                icon.className = 'fas fa-angles-left';
-                span.style.display = 'inline';
-            }
-        };
-    }
+    
+    const handleSidebarToggle = () => {
+        if (sidebar) sidebar.classList.toggle('collapsed');
+    };
+
+    if (collapseBtn) collapseBtn.onclick = handleSidebarToggle;
+    if (menuToggle) menuToggle.onclick = handleSidebarToggle;
 
     window.showSection = (section) => {
         document.getElementById('homeSection').style.display = 'none';
@@ -1533,7 +1539,12 @@
                     const thumb = track.album.images[0]?.url || '';
                     const artist = track.artists.map(a => a.name).join(', ');
                     
-                    card.onclick = () => playSpotifyTrack(track.id, track.name, artist, thumb, track.preview_url);
+                    const triggerPlay = () => playSpotifyTrack(track.id, track.name, artist, thumb, track.preview_url);
+                    card.onclick = triggerPlay;
+                    card.ontouchend = (e) => {
+                        e.preventDefault(); // Prevent double trigger
+                        triggerPlay();
+                    };
 
                     card.innerHTML = `
                         <div style="position: relative; aspect-ratio: 1/1; overflow: hidden;">
@@ -1599,38 +1610,45 @@
 
         // 1. Try JaVibe Player (SDK - FORCED ON ALL DEVICES)
         if (spotifyAccessToken && spotifyDeviceId) {
-            const res = await playOnDevice(spotifyDeviceId);
-            if (res.ok) {
-                console.log("Playing on JaVibe Player");
-                return finalizePlayback(trackId, true);
-            }
+            try {
+                const res = await playOnDevice(spotifyDeviceId);
+                if (res.ok) {
+                    console.log("Playing on JaVibe Player");
+                    return finalizePlayback(trackId, true);
+                }
+            } catch (e) { console.warn("SDK Play failed, trying sync..."); }
         }
 
-        // 2. FORCE-ACTIVE MOBILE SYNC
+        // 2. AGGRESSIVE DEVICE SYNC (Crucial for Mobile Spoofing)
         if (spotifyAccessToken) {
             const devices = await getSpotifyDevices();
-            // In Desktop-Spoof mode, we aggressively target ANY device found
+            // Find the best device to play on: active > smartphone > any
             const targetDevice = devices.find(d => d.is_active) || 
                                devices.find(d => d.type.toLowerCase() === 'smartphone') || 
                                devices[0];
             
             if (targetDevice) {
-                console.log(`Forcing sync to ${targetDevice.name}`);
-                await transferSpotifyPlayback(targetDevice.id);
-                
-                const res = await playOnDevice(targetDevice.id);
-                if (res.ok) {
-                    return finalizePlayback(trackId, true);
-                }
+                console.log(`Syncing playback to: ${targetDevice.name} (${targetDevice.type})`);
+                try {
+                    // Force the transfer FIRST
+                    await transferSpotifyPlayback(targetDevice.id);
+                    
+                    // Give Spotify a small window to hand over control
+                    await new Promise(r => setTimeout(r, 800));
+                    
+                    const res = await playOnDevice(targetDevice.id);
+                    if (res.ok) {
+                        return finalizePlayback(trackId, true);
+                    }
+                } catch (e) { console.warn("Mobile device sync failed:", e); }
             }
         }
 
-        // 3. ABSOLUTE LAST RESORT: Embed (30s preview)
-        // This only happens if NO Spotify devices are found at all
+        // 3. LAST RESORT: Embed (30s preview) - NO FALLBACK BUTTONS
         const playerContainer = document.getElementById('youtube-player-container');
         playerContainer.innerHTML = `<iframe src="https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0" width="100%" height="80" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="border-radius:12px;"></iframe>`;
         
-        if (window.innerWidth < 768) {
+        if (window.innerWidth < 1024) {
             showMobileSpotifyHint();
         }
 
