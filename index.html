@@ -1375,15 +1375,15 @@
             `https://api.codetabs.com/v1/proxy?url=${encodeURIComponent(url)}`,
             `https://corsproxy.io/?${encodeURIComponent(url)}`,
             `https://cors-proxy.org/?url=${encodeURIComponent(url)}`,
-            `https://thingproxy.freeboard.io/fetch/${url}`,
-            `https://corsproxy.org/?${encodeURIComponent(url)}` // Moved to end (often blocks)
+            `https://thingproxy.freeboard.io/fetch/${url}`
+            // corsproxy.org REMOVED - Unreliable and blocks GitHub Pages
         ];
 
         for (const proxy of proxies) {
             try {
                 console.log(`JaVibe: Trying proxy ${proxy}`);
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000); 
+                const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased to 15s to prevent "Signal Aborted"
 
                 const options = { 
                     method, 
@@ -1434,7 +1434,11 @@
                     continue;
                 }
             } catch (err) {
-                console.warn(`JaVibe: Proxy ${proxy} failed`, err);
+                if (err.name === 'AbortError') {
+                    console.warn(`JaVibe: Proxy ${proxy} timed out (Signal Aborted)`);
+                } else {
+                    console.warn(`JaVibe: Proxy ${proxy} failed`, err);
+                }
             }
         }
         throw new Error("All proxies failed.");
