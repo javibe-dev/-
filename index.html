@@ -35,6 +35,13 @@
             overflow-x: hidden;
             position: relative;
         }
+        html {
+            -webkit-text-size-adjust: 100% !important;
+            text-size-adjust: 100% !important;
+        }
+        input, textarea, select {
+            font-size: 16px !important;
+        }
 
         /* Snowflake Animation */
         .snowflake {
@@ -1155,35 +1162,32 @@
 
     // --- DESKTOP SPOOFING FOR MOBILE ---
     function forceDesktopMode() {
-        if (window.innerWidth < 1024) {
-            // 1. Force the browser to think it's a 1024px wide desktop
+        const BASE_W = 1280;
+        const BASE_H = 720;
+        if (window.innerWidth < BASE_W) {
             let viewport = document.querySelector('meta[name="viewport"]');
             if (!viewport) {
                 viewport = document.createElement('meta');
                 viewport.name = "viewport";
                 document.head.appendChild(viewport);
             }
-            viewport.setAttribute('content', 'width=1024, initial-scale=1');
+            viewport.setAttribute('content', `width=${BASE_W}, initial-scale=1, maximum-scale=1, user-scalable=no`);
 
-            // 2. Lock Aspect Ratio and Scale UI down to fit phone screen
             const screenWidth = window.screen.width;
             const screenHeight = window.screen.height;
-            const scale = screenWidth / 1024;
+            const scale = Math.min(screenWidth / BASE_W, screenHeight / BASE_H);
 
-            document.documentElement.style.width = '1024px';
-            document.documentElement.style.height = `${screenHeight / scale}px`;
+            document.documentElement.style.width = `${BASE_W}px`;
+            document.documentElement.style.height = `${BASE_H}px`;
             document.documentElement.style.overflowX = 'hidden';
-            
-            // Use transform to shrink the "desktop" down to mobile size
-            document.body.style.width = '1024px';
+
+            document.body.style.width = `${BASE_W}px`;
             document.body.style.transform = `scale(${scale})`;
             document.body.style.transformOrigin = '0 0';
             document.body.style.margin = '0';
             document.body.style.padding = '0';
-            
-            // Lock height to prevent vertical stretching
             document.body.style.height = `${100 / scale}vh`;
-            
+
             console.log(`Micro-Desktop Active: Scaled to ${scale.toFixed(2)}`);
         }
     }
