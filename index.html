@@ -844,8 +844,8 @@
                         <input type="range" id="volumeSlider" min="0" max="100" value="100" style="width: 80px; accent-color: var(--primary);">
                     </div>
 
-                    <!-- Hidden YouTube Player -->
-                    <div id="youtube-player-container" style="position: fixed; width: 300px; height: 300px; left: -10000px; top: -10000px; pointer-events: none;"></div>
+                    <!-- Music Player Container (Visible for Spotify, Hidden for YT) -->
+                    <div id="youtube-player-container" style="position: absolute; bottom: 100%; left: 0; width: 100%; background: #111113; border-top-left-radius: 12px; border-top-right-radius: 12px; overflow: hidden; height: 0; transition: height 0.3s ease;"></div>
                 </div>
             </div>
 
@@ -1423,18 +1423,57 @@
         document.getElementById('playerThumb').src = thumb;
         
         const playerContainer = document.getElementById('youtube-player-container');
-        playerContainer.innerHTML = `<iframe src="https://open.spotify.com/embed/track/${trackId}" width="300" height="380" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>`;
+        // Clear previous content
+        playerContainer.innerHTML = '';
+        playerContainer.style.height = '80px'; // Show the embed
+        playerContainer.style.padding = '0';
         
+        // Create the Spotify Embed
+        const iframe = document.createElement('iframe');
+        // Use the newer embed format which works better
+        iframe.src = `https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0`;
+        iframe.width = "100%";
+        iframe.height = "80"; 
+        iframe.frameBorder = "0";
+        iframe.allow = "autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture";
+        iframe.loading = "lazy";
+        
+        playerContainer.appendChild(iframe);
+        
+        // Spotify Embed handles its own playback. 
         if (previewUrl) {
             audioPlayer.src = previewUrl;
-            audioPlayer.play();
+            audioPlayer.play().catch(e => console.log("Autoplay blocked:", e));
             isPlaying = true;
             updatePlayPauseUI(true);
             startProgressLoop();
         } else {
-            isPlaying = true;
+            audioPlayer.src = '';
+            isPlaying = true; 
             updatePlayPauseUI(true);
-            stopProgressLoop(); // No preview means no local progress tracking
+            stopProgressLoop();
+        }
+    }
+
+    // Update playYouTubeVideo to hide the container
+    function playYouTubeVideo(id, title, artist, thumb) {
+        if (!player || !player.loadVideoById) return;
+        
+        const playerContainer = document.getElementById('youtube-player-container');
+        playerContainer.style.height = '0'; // Hide for YT
+        
+        player.loadVideoById(id);
+        player.playVideo();
+        
+        document.getElementById('musicPlayerBar').style.display = 'flex';
+        document.getElementById('playerTitle').textContent = title;
+        document.getElementById('playerArtist').textContent = artist;
+        document.getElementById('playerThumb').src = thumb;
+        
+        // Stop Spotify if playing
+        if (audioPlayer) {
+            audioPlayer.pause();
+            audioPlayer.src = '';
         }
     }
 
@@ -1521,8 +1560,16 @@
     };
 
     window.playSong = function(videoId, title, artist, thumb) {
-        if (audioPlayer) audioPlayer.pause();
+        if (audioPlayer) {
+            audioPlayer.pause();
+            audioPlayer.src = '';
+        }
         if (!player) return;
+        
+        const playerContainer = document.getElementById('youtube-player-container');
+        playerContainer.style.height = '0'; // Hide for YT
+        playerContainer.innerHTML = ''; // Clear Spotify if any
+        
         player.loadVideoById(videoId);
         document.getElementById('musicPlayerBar').style.display = 'flex';
         document.getElementById('playerTitle').textContent = title;
