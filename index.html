@@ -585,6 +585,174 @@
             opacity: 0;
             visibility: hidden;
         }
+        /* Top Bar & Header Icons */
+        .top-bar {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 2rem;
+            width: 100%;
+        }
+
+        .header-icons {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 8px 16px;
+            border-radius: 100px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .header-icon-btn {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .header-icon-btn:hover {
+            color: var(--primary);
+            transform: scale(1.1);
+        }
+
+        .user-profile-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 100px;
+            transition: background 0.2s ease;
+        }
+
+        .user-profile-badge:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: white;
+        }
+
+        /* Forms & Inputs */
+        .form-group {
+            margin-bottom: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-left: 4px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 2rem;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 16px;
+            border-radius: 12px;
+            color: white;
+            outline: none;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        input:focus {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        /* Buttons */
+        .primary-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .primary-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
+        }
+
+        .primary-btn:active {
+            transform: translateY(0);
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            border-radius: 50%;
+            transition: background 0.2s ease;
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Dashboard & Search UI */
+        .dashboard-header {
+            margin-bottom: 2.5rem;
+        }
+
+        .dashboard-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .dashboard-subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .search-container {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 8px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+        }
+
         #playerSection {
             max-height: 0;
             overflow: hidden;
@@ -661,7 +829,7 @@
         <div class="container" id="mainContainer">
             <div class="form-wrapper">
                 <div class="form-content" id="loginView">
-                    <h2>Welcome Back</h2>
+                    <h2 style="font-size: 2.2rem; font-weight: 700; margin-bottom: 0.5rem;">Welcome Back</h2>
                     <p class="subtitle">Enter your details to sign in</p>
                     <div class="form-group">
                         <label>Email Address</label>
@@ -671,20 +839,20 @@
                         <label>Password</label>
                         <input type="password" id="loginPassword" placeholder="••••••••">
                     </div>
-                    <button id="loginBtn" class="primary-btn" style="width: 100%;">Sign In</button>
-                    <p style="text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
-                        Don't have an account? <span id="toSignup" style="color: #3b82f6; cursor: pointer; font-weight: 600;">Create one</span>
+                    <button id="loginBtn" class="primary-btn" style="width: 100%; margin-top: 1rem; height: 50px; font-size: 1rem;">Sign In</button>
+                    <p style="text-align: center; margin-top: 2rem; font-size: 0.95rem; color: var(--text-muted);">
+                        Don't have an account? <span id="toSignup" style="color: var(--primary); cursor: pointer; font-weight: 600; text-decoration: underline;">Create one</span>
                     </p>
                 </div>
                 <div class="form-content" id="signupView">
-                    <h2>Create Account</h2>
+                    <h2 style="font-size: 2.2rem; font-weight: 700; margin-bottom: 0.5rem;">Create Account</h2>
                     <p class="subtitle">Join JaVibe today</p>
                     <div style="display: flex; gap: 12px;">
-                        <div class="form-group">
+                        <div class="form-group" style="flex: 1;">
                             <label>First Name</label>
                             <input type="text" id="firstName" placeholder="John">
                         </div>
-                        <div class="form-group">
+                        <div class="form-group" style="flex: 1;">
                             <label>Last Name</label>
                             <input type="text" id="lastName" placeholder="Doe">
                         </div>
@@ -701,9 +869,9 @@
                         <label>Confirm Password</label>
                         <input type="password" id="confirmPassword" placeholder="••••••••">
                     </div>
-                    <button id="signupBtn" class="primary-btn" style="width: 100%;">Create Account</button>
-                    <p style="text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
-                        Already have an account? <span id="toLogin" style="color: #3b82f6; cursor: pointer; font-weight: 600;">Sign in</span>
+                    <button id="signupBtn" class="primary-btn" style="width: 100%; margin-top: 1rem; height: 50px; font-size: 1rem;">Create Account</button>
+                    <p style="text-align: center; margin-top: 2rem; font-size: 0.95rem; color: var(--text-muted);">
+                        Already have an account? <span id="toLogin" style="color: var(--primary); cursor: pointer; font-weight: 600; text-decoration: underline;">Sign in</span>
                     </p>
                 </div>
             </div>
@@ -768,10 +936,11 @@
         <main class="main-content">
             <div class="top-bar">
                 <div class="header-icons">
-                    <i class="fas fa-globe header-icon-btn" onclick="window.open('https://javibe.vercel.app', '_blank')"></i>
+                    <i class="fas fa-globe header-icon-btn" onclick="window.open('https://javibe.vercel.app', '_blank')" title="Visit Website"></i>
+                    <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.1);"></div>
                     <div class="user-profile-badge" onclick="showSection('profile')">
                         <div class="user-avatar" id="avatarLetter">U</div>
-                        <span style="font-size: 0.85rem;" id="headerUsername">User</span>
+                        <span id="headerUsername" style="font-weight: 500; font-size: 0.9rem;">User</span>
                     </div>
                 </div>
             </div>
@@ -782,34 +951,34 @@
                     <p class="dashboard-subtitle">✨ Welcome to your personal space.</p>
                 </div>
                 
-                <div class="discord-bar" style="background: #111113; border: 1px solid rgba(255, 255, 255, 0.05); color: white; padding: 12px 16px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 2rem;">
-                    <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
-                        <div class="discord-icon-container" style="background: #5865f2; width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                            <i class="fab fa-discord" style="font-size: 18px;"></i>
+                <div class="discord-bar" style="background: linear-gradient(90deg, rgba(88, 101, 242, 0.1) 0%, rgba(88, 101, 242, 0.05) 100%); border: 1px solid rgba(88, 101, 242, 0.2); color: white; padding: 16px 20px; border-radius: 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 2rem; backdrop-filter: blur(10px);">
+                    <div style="display: flex; align-items: center; gap: 16px; min-width: 0;">
+                        <div class="discord-icon-container" style="background: #5865f2; width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 15px rgba(88, 101, 242, 0.3);">
+                            <i class="fab fa-discord" style="font-size: 22px;"></i>
                         </div>
                         <div style="min-width: 0;">
-                            <h4 style="margin: 0; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Join our Discord!</h4>
-                            <p style="margin: 0; color: var(--text-muted); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Updates & support.</p>
+                            <h4 style="margin: 0; font-size: 1.1rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Join our Discord Community!</h4>
+                            <p style="margin: 4px 0 0; color: var(--text-muted); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Get the latest updates and real-time support.</p>
                         </div>
                     </div>
-                    <a href="https://discord.gg/QYTgmVq96v" target="_blank" class="primary-btn" style="text-decoration: none; padding: 0.5rem 1rem; font-size: 0.8rem; flex-shrink: 0; white-space: nowrap;">Join Server</a>
+                    <a href="https://discord.gg/QYTgmVq96v" target="_blank" class="primary-btn" style="text-decoration: none; padding: 0.6rem 1.2rem; font-size: 0.85rem; flex-shrink: 0; background: #5865f2;">Join Server</a>
                 </div>
 
-                <div class="welcome-card" style="background: #111113; border: 1px solid rgba(255, 255, 255, 0.05); padding: 2.5rem; border-radius: 20px; margin-bottom: 2rem;">
-                    <h2 style="margin-bottom: 1rem; font-size: 1.5rem;">Welcome to JaVibe, <span id="welcomeUser">User</span>! 👋</h2>
-                    <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem; max-width: 800px;">
+                <div class="welcome-card" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); padding: 2.5rem; border-radius: 24px; margin-bottom: 2rem; backdrop-filter: blur(10px);">
+                    <h2 style="margin-bottom: 1rem; font-size: 1.8rem; font-weight: 700;">Welcome to JaVibe, <span id="welcomeUser" style="color: var(--primary);">User</span>! 👋</h2>
+                    <p style="color: var(--text-muted); font-size: 1rem; line-height: 1.7; margin-bottom: 1.5rem; max-width: 800px;">
                         Ready to start your day with some freshly baked songs? JaVibe offers the best free 24/7 musics because we offer performance and the ability of not having to keep your phone on all-day! We do not take battery consumption.
                     </p>
-                    <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">
+                    <p style="color: var(--text-muted); font-size: 1rem; line-height: 1.7; margin-bottom: 2rem;">
                         We recommend you to join our Discord Server if you're looking to reach out for support! Our community is pretty welcoming and will help you get started in no time.
                     </p>
                     
-                    <div class="action-links" style="display: flex; gap: 25px; flex-wrap: wrap;">
-                        <a href="https://discord.gg/QYTgmVq96v" target="_blank" class="action-link" style="color: #3b82f6; text-decoration: none; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; font-weight: 600;">
-                            <i class="fab fa-discord"></i> Join our Discord Server!
+                    <div class="action-links" style="display: flex; gap: 30px; flex-wrap: wrap;">
+                        <a href="https://discord.gg/QYTgmVq96v" target="_blank" class="action-link" style="color: var(--primary); text-decoration: none; font-size: 0.95rem; display: flex; align-items: center; gap: 10px; font-weight: 600; transition: opacity 0.2s;">
+                            <i class="fab fa-discord" style="font-size: 1.2rem;"></i> Join our Discord Server!
                         </a>
-                        <a href="#" class="action-link" onclick="handleUsernameChange()" style="color: var(--text-main); text-decoration: none; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; opacity: 0.8;">
-                            Change your username
+                        <a href="#" class="action-link" onclick="handleUsernameChange()" style="color: var(--text-main); text-decoration: none; font-size: 0.95rem; display: flex; align-items: center; gap: 10px; opacity: 0.7; transition: opacity 0.2s;">
+                            <i class="fas fa-user-edit"></i> Change your username
                         </a>
                     </div>
                 </div>
@@ -821,10 +990,10 @@
                     <p class="dashboard-subtitle">🎵 Explore millions of tracks and videos from YouTube.</p>
                 </div>
 
-                <div class="search-container" style="margin-bottom: 2rem;">
-                    <div style="position: relative; display: flex; gap: 10px;">
-                        <input type="text" id="musicSearchInput" placeholder="Search for tracks, artists, or albums..." style="padding-right: 45px;">
-                        <button id="musicSearchBtn" class="primary-btn" style="white-space: nowrap;">Search Music</button>
+                <div class="search-container">
+                    <div style="position: relative; display: flex; gap: 12px;">
+                        <input type="text" id="musicSearchInput" placeholder="Search for tracks, artists, or albums...">
+                        <button id="musicSearchBtn" class="primary-btn"><i class="fas fa-search"></i> Search</button>
                     </div>
                 </div>
 
