@@ -238,12 +238,51 @@
             display: flex;
             flex-direction: column;
             padding: 1.25rem;
-            z-index: 100;
+            z-index: 1000; /* Same as toggle, but toggle will be after in DOM or have higher Z */
             height: 100vh;
-            height: 100svh; /* Better mobile height */
-            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease;
+            height: 100svh;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             overflow-y: auto;
             position: relative;
+        }
+
+        .sidebar.collapsed {
+            width: 0;
+            padding: 0;
+            margin: 0;
+            border: none;
+            transform: translateX(-100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .menu-toggle {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1100;
+            background: var(--primary);
+            border: none;
+            color: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+
+        .menu-toggle:hover {
+            transform: scale(1.05);
+            background: var(--primary-hover);
+        }
+
+        /* Show toggle when sidebar is collapsed on desktop */
+        .sidebar.collapsed ~ .menu-toggle {
+            display: flex;
         }
 
         .sidebar-content {
@@ -361,42 +400,6 @@
 
         .nav-arrow { font-size: 0.7rem; opacity: 0.5; }
 
-        /* Main Content */
-        /* Sidebar Collapsed State - HIDE COMPLETELY */
-        .sidebar.collapsed {
-            width: 0;
-            padding: 0;
-            margin: 0;
-            border: none;
-            transform: translateX(-100%);
-            overflow: hidden;
-        }
-        
-        /* Menu Toggle Button (Hamburger) */
-        .menu-toggle {
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            z-index: 1000;
-            background: var(--glass-bg);
-            border: 1px solid var(--glass-border);
-            color: white;
-            width: 45px;
-            height: 45px;
-            border-radius: 12px;
-            display: flex; /* Always show toggle on mobile/spoof */
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            backdrop-filter: blur(10px);
-            transition: all 0.3s ease;
-        }
-
-        .menu-toggle:hover {
-            background: rgba(255, 255, 255, 0.1);
-            transform: scale(1.05);
-        }
-
         .main-content {
             flex: 1;
             padding: 2rem 3rem;
@@ -406,222 +409,63 @@
             height: 100vh;
         }
 
-        .top-bar {
-            display: flex;
-            justify-content: flex-end;
-            gap: 15px;
-            margin-bottom: 2rem;
-        }
-
-        .header-icons {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            margin-left: 10px;
-        }
-
-        .header-icon-btn {
-            color: var(--text-muted);
-            cursor: pointer;
-            font-size: 1.1rem;
-            transition: color 0.2s;
-        }
-        .header-icon-btn:hover { color: var(--text-main); }
-
-        .user-profile-badge {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background: rgba(59, 130, 246, 0.1);
-            padding: 5px 12px;
-            border-radius: 20px;
-            cursor: pointer;
-        }
-
-        .user-avatar {
-            width: 24px;
-            height: 24px;
-            background: #6366f1;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7rem;
-            font-weight: 700;
-        }
-
-        .dashboard-header {
-            margin-bottom: 2rem;
-        }
-
-        .dashboard-title {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            font-size: 2.2rem;
-            font-weight: 700;
-            margin-bottom: 8px;
-        }
-
-        .dashboard-subtitle {
-            color: var(--text-muted);
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            font-size: 0.95rem;
-        }
-
-        /* Generic Components */
-        .form-group { margin-bottom: 1.25rem; }
-        input {
-            width: 100%;
-            padding: 0.85rem 1rem;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid var(--glass-border);
-            border-radius: 12px;
-            color: white;
-            outline: none;
-            transition: all 0.3s ease;
-        }
-        input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15); }
-
-        .primary-btn {
-            background: var(--primary);
-            color: white;
-            border: none;
-            padding: 0.7rem 1.25rem; /* Smaller padding */
-            border-radius: 10px; /* Slightly smaller radius */
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 0.9rem; /* Smaller font */
-            transition: all 0.3s ease;
-        }
-        .primary-btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
-
-        #message { margin-top: 1rem; text-align: center; font-size: 0.9rem; }
-        .error { color: #fda4af; }
-        .success { color: #6ee7b7; }
-
-        /* Mobile Menu Toggle */
-        .menu-toggle {
-            display: none;
-            position: fixed;
-            top: 20px;
-            left: 20px;
-            z-index: 1000;
-            background: #3b82f6;
-            color: white;
-            border: none;
-            padding: 10px;
-            border-radius: 8px;
-            cursor: pointer;
-        }
-
-        /* Hide menu toggle when auth view is active */
-        #authView.active ~ .menu-toggle,
-        #loadingScreen:not(.hidden) ~ .menu-toggle {
-            display: none !important;
-        }
-
-        /* Center auth container better on mobile */
-        @media (max-width: 480px) {
-            .discord-bar {
-                padding: 10px 14px !important;
-                gap: 10px !important;
-            }
-            .discord-bar h4 {
-                font-size: 0.9rem !important;
-            }
-            .discord-bar p {
-                font-size: 0.7rem !important;
-            }
-            .discord-bar .primary-btn {
-                 padding: 0.4rem 0.8rem !important;
-                 font-size: 0.75rem !important;
-             }
-             .discord-icon-container {
-                 width: 30px !important;
-                 height: 30px !important;
-             }
-             .discord-bar i.fab.fa-discord {
-                font-size: 16px !important;
-            }
-
-            #authView {
-                display: flex;
-                flex-direction: column;
-                justify-content: center;
-                align-items: center;
-                padding: 1.5rem; /* Consistent padding */
-                width: 100%;
-                min-height: 100svh;
-                overflow: hidden; /* Prevent random scrolling */
-                background: var(--bg-dark);
-            }
-            .container {
-                margin: 0;
-                width: 100%;
-                max-width: 100%; /* Force it to fill the padding width */
-                border-radius: 24px;
-                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            }
-            .form-content {
-                padding: 2.5rem 1.5rem;
-            }
-        }
         @media (max-width: 1024px) {
             .sidebar {
                 position: fixed;
-                left: -260px;
-                transition: transform 0.3s ease;
+                left: 0;
+                transform: translateX(-100%);
+                opacity: 1;
+                pointer-events: auto;
+                box-shadow: 20px 0 50px rgba(0,0,0,0.5);
             }
             .sidebar.open {
-                transform: translateX(260px);
-            }
-            .main-content {
-                padding: 5rem 1.5rem 2rem;
+                transform: translateX(0);
+                width: 280px;
+                padding: 1.25rem;
             }
             .menu-toggle {
-                display: block;
+                display: flex;
+            }
+            .main-content {
+                padding: 5rem 1rem 6rem; /* Extra bottom padding for player bar */
             }
             .dashboard-title {
-                font-size: 1.8rem;
+                font-size: 1.6rem;
+            }
+            .results-grid {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 12px;
+            }
+            .music-card {
+                padding: 10px;
+            }
+            .music-card img {
+                height: 140px;
+            }
+            #musicPlayerBar {
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+            #playerMetadata {
+                padding: 10px 15px;
             }
         }
 
         @media (max-width: 480px) {
-            #authView {
-                padding: 10px;
-                align-items: flex-start;
-                padding-top: 5vh; /* Center it slightly better vertically on small screens */
-                overflow-y: auto; /* Allow scrolling the whole view if form is tall */
+            .results-grid {
+                grid-template-columns: repeat(2, 1fr); /* 2 columns on small phones */
+                gap: 10px;
             }
-            .container {
-                border-radius: 20px;
-                max-width: 100%;
-                margin: 0 auto;
-                box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            .music-card h5 {
+                font-size: 0.8rem;
             }
-            .form-content {
-                padding: 2rem 1.5rem;
-            }
-            .form-content h2 {
-                font-size: 1.75rem;
-                margin-bottom: 0.5rem;
-            }
-            .subtitle {
-                margin-bottom: 1.5rem;
-            }
-            .form-group {
-                margin-bottom: 1rem;
+            .music-card p {
+                font-size: 0.65rem;
             }
             .dashboard-title {
-                font-size: 1.5rem;
+                font-size: 1.4rem;
             }
-            .top-bar {
-                justify-content: center;
-                flex-wrap: wrap;
-                margin-bottom: 1rem;
+            .welcome-card {
+                padding: 1.5rem !important;
             }
         }
 
@@ -742,6 +586,42 @@
             opacity: 0;
             visibility: hidden;
         }
+        #playerSection {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, padding 0.5s ease;
+            opacity: 0;
+            padding: 0 20px;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        #playerSection.expanded {
+            max-height: 500px; /* Adjust based on video height + padding */
+            opacity: 1;
+            padding: 20px;
+        }
+
+        #togglePlayerIcon {
+            transition: transform 0.4s ease;
+        }
+
+        #togglePlayerIcon.rotated {
+            transform: rotate(180deg);
+        }
+
+        .music-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 12px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
     </style>
 </head>
 <body>
@@ -832,11 +712,6 @@
         </div>
     </div>
 
-    <!-- Mobile Menu Toggle -->
-    <button class="menu-toggle" id="menuToggle">
-        <i class="fas fa-bars"></i>
-    </button>
-
     <!-- Dashboard View -->
     <div id="dashboardView" class="view">
         <aside class="sidebar" id="sidebar">
@@ -885,6 +760,11 @@
                 <p style="font-size: 0.65rem; color: var(--text-muted); margin-top: 10px; padding-left: 10px;">JaMusic Research and Coding Corp.</p>
             </div>
         </aside>
+
+        <!-- Mobile/Collapse Menu Toggle -->
+        <button class="menu-toggle" id="menuToggle">
+            <i class="fas fa-bars"></i>
+        </button>
 
         <main class="main-content">
             <div class="top-bar">
@@ -963,7 +843,7 @@
             <!-- Music Player Bar (Global) -->
             <div id="musicPlayerBar" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10, 10, 12, 0.98); backdrop-filter: blur(15px); border-top: 1px solid rgba(255, 255, 255, 0.1); z-index: 1000; flex-direction: column;">
                 <!-- Expanded Video Container -->
-                <div id="playerSection" style="display: none; width: 100%; max-width: 800px; margin: 0 auto; padding: 20px;">
+                <div id="playerSection">
                     <div id="ytPlayerContainer" style="width: 100%; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--glass-border);">
                         <div id="youtube-player"></div>
                     </div>
@@ -1100,9 +980,12 @@
     const menuToggle = document.getElementById('menuToggle');
     const collapseBtn = document.getElementById('collapseBtn');
 
-    // Mobile menu toggle
-    if (menuToggle && sidebar) {
-        menuToggle.onclick = () => {
+    // Consolidated Sidebar Toggle Logic
+    const handleSidebarToggle = () => {
+        if (!sidebar) return;
+        
+        if (window.innerWidth <= 1024) {
+            // Mobile: Toggle 'open' class
             sidebar.classList.toggle('open');
             const icon = menuToggle.querySelector('i');
             if (sidebar.classList.contains('open')) {
@@ -1110,15 +993,28 @@
             } else {
                 icon.classList.replace('fa-times', 'fa-bars');
             }
-        };
-    }
+        } else {
+            // Desktop: Toggle 'collapsed' class
+            sidebar.classList.toggle('collapsed');
+            // Reset icon just in case
+            if (menuToggle) {
+                const icon = menuToggle.querySelector('i');
+                icon.classList.replace('fa-times', 'fa-bars');
+            }
+        }
+    };
+
+    if (menuToggle) menuToggle.onclick = handleSidebarToggle;
+    if (collapseBtn) collapseBtn.onclick = handleSidebarToggle;
 
     // Close sidebar on nav item click (mobile)
     document.querySelectorAll('.nav-item').forEach(item => {
         item.addEventListener('click', () => {
             if (window.innerWidth <= 1024 && sidebar.classList.contains('open')) {
                 sidebar.classList.remove('open');
-                menuToggle.querySelector('i').classList.replace('fa-times', 'fa-bars');
+                if (menuToggle) {
+                    menuToggle.querySelector('i').classList.replace('fa-times', 'fa-bars');
+                }
             }
         });
     });
@@ -1190,16 +1086,6 @@
     if (toSignup) toSignup.onclick = () => toggleView(true);
     if (toLogin) toLogin.onclick = () => toggleView(false);
 
-    
-    // sidebar is already declared above; no need to redeclare
-    
-    const handleSidebarToggle = () => {
-        if (sidebar) sidebar.classList.toggle('collapsed');
-    };
-
-    if (collapseBtn) collapseBtn.onclick = handleSidebarToggle;
-    if (menuToggle) menuToggle.onclick = handleSidebarToggle;
-
     window.showSection = (section) => {
         document.getElementById('homeSection').style.display = 'none';
         document.getElementById('dashboardSection').style.display = 'none';
@@ -1209,6 +1095,19 @@
         const sectionId = `${section}Section`;
         const targetSection = document.getElementById(sectionId);
         if (targetSection) targetSection.style.display = 'block';
+
+        // Clear search results when switching to dashboard (Music)
+        if (section === 'dashboard') {
+            const resultsEl = document.getElementById('musicResults');
+            if (resultsEl) {
+                resultsEl.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">
+                        <i class="fas fa-music" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.2;"></i>
+                        <p>Search for something to see results</p>
+                    </div>
+                `;
+            }
+        }
         
         // Update nav active state
         document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
@@ -1332,7 +1231,8 @@
             
             // Some browsers/API versions need the element to be visible to init properly
             bar.style.display = 'flex';
-            section.style.display = 'block';
+            const isInitiallyExpanded = section.classList.contains('expanded');
+            if (!isInitiallyExpanded) section.classList.add('expanded');
             bar.style.opacity = '0'; // Keep it invisible but "displayed"
 
             player = new YT.Player('youtube-player', {
@@ -1351,7 +1251,7 @@
                         playerReady = true;
                         // Restore original visibility
                         bar.style.display = originalBarDisplay;
-                        section.style.display = originalSectionDisplay;
+                        if (!isInitiallyExpanded) section.classList.remove('expanded');
                         bar.style.opacity = '1';
                     },
                     'onStateChange': (event) => {
@@ -1397,9 +1297,13 @@
         for (const proxy of proxies) {
             try {
                 console.log(`JaVibe: Trying proxy ${proxy}`);
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout per proxy
+
                 const options = { 
                     method, 
-                    headers: { 'Accept': 'application/json, text/plain, */*' } 
+                    headers: { 'Accept': 'application/json, text/plain, */*' },
+                    signal: controller.signal
                 };
                 if (body) {
                     options.headers['Content-Type'] = 'application/json';
@@ -1407,6 +1311,8 @@
                 }
 
                 const response = await fetch(proxy, options);
+                clearTimeout(timeoutId);
+                
                 if (!response.ok) continue;
                 
                 if (proxy.includes('allorigins.win')) {
@@ -1416,16 +1322,23 @@
                 
                 return type === 'json' ? await response.json() : await response.text();
             } catch (err) {
-                console.warn(`JaVibe: Proxy ${proxy} failed`, err);
+                console.warn(`JaVibe: Proxy ${proxy} failed or timed out`, err);
             }
         }
         throw new Error("All proxies failed.");
     }
 
+    let lastSearchQuery = "";
     async function searchMusic(query) {
         if (!query) return;
+        lastSearchQuery = query;
+        window.lastSearchQuery = query; // Ensure it's globally accessible for the retry button
         const resultsEl = document.getElementById('musicResults');
         const btn = document.getElementById('musicSearchBtn');
+        const input = document.getElementById('musicSearchInput');
+        
+        // Clear input so searching same thing twice works easily
+        if (input) input.value = '';
         
         btn.disabled = true;
         btn.textContent = "Searching...";
@@ -1545,10 +1458,20 @@
                 } catch (err) { continue; }
             }
 
-            resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">No results found. Try a different search term or paste a YouTube link.</p>`;
+            resultsEl.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 2rem;">
+                    <p style="color: #fda4af; margin-bottom: 1rem;">No results found. Try a different search term or paste a YouTube link.</p>
+                    <button onclick="searchMusic(lastSearchQuery)" class="primary-btn" style="width: auto; padding: 8px 20px;">Retry Search</button>
+                </div>
+            `;
         } catch (err) {
             console.error("JaVibe: All search methods failed", err);
-            resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">All search providers failed. Please check your internet or try again later.</p>`;
+            resultsEl.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 2rem;">
+                    <p style="color: #fda4af; margin-bottom: 1rem;">All search providers failed or timed out. Please check your internet.</p>
+                    <button onclick="searchMusic(lastSearchQuery)" class="primary-btn" style="width: auto; padding: 8px 20px;">Retry Search</button>
+                </div>
+            `;
         } finally {
             btn.disabled = false;
             btn.textContent = "Search Music";
@@ -1603,9 +1526,9 @@
                 if (playerReady && player && player.loadVideoById) {
                     clearInterval(wait);
                     actuallyPlay();
-                } else if (attempts > 20) {
+                } else if (attempts > 60) { // Increased to 30 seconds
                     clearInterval(wait);
-                    alert("Player initialization failed. Please refresh the page.");
+                    alert("Player initialization is taking longer than expected. Please check your connection and refresh if needed.");
                 }
             }, 500);
             return;
@@ -1632,13 +1555,9 @@
     window.togglePlayer = () => {
         const playerSection = document.getElementById('playerSection');
         const icon = document.getElementById('togglePlayerIcon');
-        if (playerSection.style.display === 'none' || playerSection.style.display === '') {
-            playerSection.style.display = 'block';
-            icon.className = 'fas fa-chevron-down';
-        } else {
-            playerSection.style.display = 'none';
-            icon.className = 'fas fa-chevron-up';
-        }
+        
+        playerSection.classList.toggle('expanded');
+        icon.classList.toggle('rotated');
     };
 
     document.getElementById('musicSearchBtn').onclick = () => searchMusic(document.getElementById('musicSearchInput').value);
