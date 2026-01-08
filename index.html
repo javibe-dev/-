@@ -1,0 +1,1608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JaVibe</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.6);
+            --bg-dark: #09090b;
+            --sidebar-bg: #111113;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: var(--bg-dark);
+            color: var(--text-main);
+            overflow-x: hidden;
+            position: relative;
+        }
+        html {
+            -webkit-text-size-adjust: 100% !important;
+            text-size-adjust: 100% !important;
+        }
+        input, textarea, select {
+            font-size: 16px !important;
+        }
+
+        /* Snowflake Animation */
+        .snowflake {
+            position: fixed;
+            top: -10px;
+            color: white;
+            font-size: 1em;
+            pointer-events: none;
+            z-index: 100;
+            user-select: none;
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(105vh) translateX(20px);
+            }
+        }
+
+        /* View Management */
+        .view {
+            display: none;
+            height: 100vh;
+            width: 100vw;
+            opacity: 0;
+            transition: opacity 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .view.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        /* --- AUTH VIEW STYLES --- */
+        #authView {
+            justify-content: center;
+            align-items: center;
+            background: #09090b;
+            padding: 20px;
+        }
+
+        .bg-blob {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.4) 0%, rgba(99, 102, 241, 0) 70%);
+            border-radius: 50%;
+            filter: blur(60px);
+            z-index: 0;
+            animation: move 25s infinite alternate;
+        }
+        .bg-blob.one { top: -100px; left: -100px; }
+        .bg-blob.two { bottom: -150px; right: -100px; }
+        
+        @keyframes move {
+            from { transform: translate(0, 0) scale(1); }
+            to { transform: translate(100px, 100px) scale(1.2); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            width: 90%; /* Better default for most screens */
+            max-width: 440px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            overflow: hidden;
+            will-change: transform, opacity;
+        }
+
+        .form-wrapper {
+            display: flex;
+            width: 200%;
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            will-change: transform;
+        }
+
+        .form-content {
+            width: 50%;
+            padding: 2.5rem;
+            flex-shrink: 0;
+            transition: opacity 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .show-signup .form-wrapper { transform: translateX(-50%); }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .music-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .music-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(99, 102, 241, 0.3);
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .music-card img {
+            width: 100%;
+            aspect-ratio: 16/9;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .music-card:hover img {
+            transform: scale(1.05);
+        }
+
+        .music-card-content {
+            padding: 12px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .music-card h5 {
+            margin: 0 0 4px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            color: white;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .music-card p {
+            margin: 0;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .results-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 15px;
+            }
+            .dashboard-title {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            .music-card {
+                flex-direction: row;
+                height: 100px;
+            }
+            .music-card img {
+                width: 140px;
+                height: 100%;
+                aspect-ratio: auto;
+            }
+            .music-card-content {
+                padding: 10px;
+            }
+        }
+
+        /* --- DASHBOARD VIEW STYLES --- */
+        #dashboardView {
+            display: none;
+            background: #09090b;
+            flex-direction: row;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: #111113;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            padding: 1.25rem;
+            z-index: 1000; /* Same as toggle, but toggle will be after in DOM or have higher Z */
+            height: 100vh;
+            height: 100svh;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .sidebar.collapsed {
+            width: 0;
+            padding: 0;
+            margin: 0;
+            border: none;
+            transform: translateX(-100%);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .menu-toggle {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1100;
+            background: var(--primary);
+            border: none;
+            color: white;
+            width: 45px;
+            height: 45px;
+            border-radius: 12px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+
+        .menu-toggle:hover {
+            transform: scale(1.05);
+            background: var(--primary-hover);
+        }
+
+        /* Show toggle when sidebar is collapsed on desktop */
+        .sidebar.collapsed ~ .menu-toggle {
+            display: flex;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: min-content;
+        }
+
+        .sidebar-footer {
+            margin-top: 2rem;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 10px;
+        }
+
+        .logo-section {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 2rem;
+            padding: 0 10px;
+        }
+
+        .logo-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 4px;
+        }
+
+        .logo-icon {
+            width: 28px;
+            height: 28px;
+            background: #3b82f6;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .logo-text {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .logo-subtitle {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-left: 2px;
+        }
+
+        .collapse-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            width: fit-content;
+            margin-top: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .nav-label {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+            padding-left: 10px;
+            font-weight: 600;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: 8px;
+            margin-bottom: 2px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .nav-item-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-item i { width: 18px; font-size: 0.9rem; }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+        }
+
+        .nav-item.active {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .nav-arrow { font-size: 0.7rem; opacity: 0.5; }
+
+        .main-content {
+            flex: 1;
+            padding: 2rem 3rem;
+            overflow-y: auto;
+            position: relative;
+            z-index: 5;
+            height: 100vh;
+        }
+
+        @media (max-width: 1024px) {
+            .sidebar {
+                position: fixed;
+                left: 0;
+                transform: translateX(-100%);
+                opacity: 1;
+                pointer-events: auto;
+                box-shadow: 20px 0 50px rgba(0,0,0,0.5);
+            }
+            .sidebar.open {
+                transform: translateX(0);
+                width: 280px;
+                padding: 1.25rem;
+            }
+            .menu-toggle {
+                display: flex;
+            }
+            .main-content {
+                padding: 5rem 1rem 6rem; /* Extra bottom padding for player bar */
+            }
+            .dashboard-title {
+                font-size: 1.6rem;
+            }
+            .results-grid {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+                gap: 12px;
+            }
+            .music-card {
+                padding: 10px;
+            }
+            .music-card img {
+                height: 140px;
+            }
+            #musicPlayerBar {
+                padding-bottom: env(safe-area-inset-bottom);
+            }
+            #playerMetadata {
+                padding: 10px 15px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .results-grid {
+                grid-template-columns: repeat(2, 1fr); /* 2 columns on small phones */
+                gap: 10px;
+            }
+            .music-card h5 {
+                font-size: 0.8rem;
+            }
+            .music-card p {
+                font-size: 0.65rem;
+            }
+            .dashboard-title {
+                font-size: 1.4rem;
+            }
+            .welcome-card {
+                padding: 1.5rem !important;
+            }
+        }
+
+        /* --- LOADING SCREEN --- */
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-dark);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+            padding: 20px;
+        }
+
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .discord-spinner {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            margin-bottom: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* The fragmented "breaking" effect layers */
+        .spinner-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: discord-spin 1.8s cubic-bezier(0.7, 0, 0.3, 1) infinite;
+        }
+
+        /* Primary layer */
+        .spinner-layer.main {
+            z-index: 3;
+        }
+
+        /* Ghost/fragment layers that appear during the spin */
+        .spinner-layer.ghost-1 {
+            z-index: 2;
+            opacity: 0.4;
+            animation-delay: 0.05s;
+        }
+
+        .spinner-layer.ghost-2 {
+            z-index: 1;
+            opacity: 0.2;
+            animation-delay: 0.1s;
+        }
+
+        .discord-spinner svg {
+            width: 65px;
+            height: 65px;
+            fill: var(--primary);
+        }
+
+        @keyframes discord-spin {
+            0% { transform: rotate(0deg); }
+            50% { transform: rotate(360deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .tip-container {
+            width: 100%;
+            max-width: 320px;
+            text-align: center;
+            padding: 0 15px;
+        }
+
+        .tip-label {
+            color: var(--primary);
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.12em;
+            margin-bottom: 10px;
+        }
+
+        .tip-text {
+            color: var(--text-main);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            opacity: 0.85;
+            font-weight: 400;
+        }
+
+        @media (max-width: 480px) {
+            .discord-spinner {
+                width: 60px;
+                height: 60px;
+            }
+            .discord-spinner i {
+                font-size: 3.5rem;
+            }
+            .tip-text {
+                font-size: 0.85rem;
+            }
+        }
+
+        #loadingScreen.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+        /* Top Bar & Header Icons */
+        .top-bar {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+            margin-bottom: 2rem;
+            width: 100%;
+        }
+
+        .header-icons {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: rgba(255, 255, 255, 0.03);
+            padding: 8px 16px;
+            border-radius: 100px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .header-icon-btn {
+            font-size: 1.2rem;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .header-icon-btn:hover {
+            color: var(--primary);
+            transform: scale(1.1);
+        }
+
+        .user-profile-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            padding: 4px 8px;
+            border-radius: 100px;
+            transition: background 0.2s ease;
+        }
+
+        .user-profile-badge:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        .user-avatar {
+            width: 32px;
+            height: 32px;
+            background: var(--primary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 0.8rem;
+            color: white;
+        }
+
+        /* Forms & Inputs */
+        .form-group {
+            margin-bottom: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .form-group label {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-left: 4px;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 2rem;
+        }
+
+        input[type="text"],
+        input[type="email"],
+        input[type="password"] {
+            width: 100%;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            padding: 12px 16px;
+            border-radius: 12px;
+            color: white;
+            outline: none;
+            transition: all 0.3s ease;
+            font-size: 0.95rem;
+        }
+
+        input:focus {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+        }
+
+        /* Buttons */
+        .primary-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .primary-btn:hover {
+            background: var(--primary-hover);
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -5px rgba(99, 102, 241, 0.4);
+        }
+
+        .primary-btn:active {
+            transform: translateY(0);
+        }
+
+        .icon-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px;
+            border-radius: 50%;
+            transition: background 0.2s ease;
+        }
+
+        .icon-btn:hover {
+            background: rgba(255, 255, 255, 0.05);
+        }
+
+        /* Dashboard & Search UI */
+        .dashboard-header {
+            margin-bottom: 2.5rem;
+        }
+
+        .dashboard-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .dashboard-subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .search-container {
+            background: rgba(255, 255, 255, 0.03);
+            padding: 8px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+        }
+
+        #playerSection {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.5s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease, padding 0.5s ease;
+            opacity: 0;
+            padding: 0 20px;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        #playerSection.expanded {
+            max-height: 500px; /* Adjust based on video height + padding */
+            opacity: 1;
+            padding: 20px;
+        }
+
+        #togglePlayerIcon {
+            transition: transform 0.4s ease;
+        }
+
+        #togglePlayerIcon.rotated {
+            transform: rotate(180deg);
+        }
+
+        .music-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 12px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Screen -->
+    <div id="loadingScreen">
+        <div class="loading-container">
+            <div class="discord-spinner">
+                <!-- Main Layer -->
+                <div class="spinner-layer main">
+                    <svg viewBox="0 0 127.14 96.36">
+                        <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.06,72.06,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.71,32.65-1.82,56.6.39,80.21a105.73,105.73,0,0,0,32.17,16.15,77.7,77.7,0,0,0,6.89-11.11,68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1,105.25,105.25,0,0,0,32.19-16.14c2.64-27.38-4.52-51.06-19.1-72.13ZM42.45,65.69C36.18,65.69,31,60,31,53s5.12-12.67,11.41-12.67S54,46,53.86,53,48.74,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5.12-12.67,11.41-12.67S96.08,46,95.94,53,90.82,65.69,84.69,65.69Z"/>
+                    </svg>
+                </div>
+                <!-- Ghost Layers for "breaking" effect -->
+                <div class="spinner-layer ghost-1">
+                    <svg viewBox="0 0 127.14 96.36">
+                        <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.06,72.06,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.71,32.65-1.82,56.6.39,80.21a105.73,105.73,0,0,0,32.17,16.15,77.7,77.7,0,0,0,6.89-11.11,68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1,105.25,105.25,0,0,0,32.19-16.14c2.64-27.38-4.52-51.06-19.1-72.13ZM42.45,65.69C36.18,65.69,31,60,31,53s5.12-12.67,11.41-12.67S54,46,53.86,53,48.74,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5.12-12.67,11.41-12.67S96.08,46,95.94,53,90.82,65.69,84.69,65.69Z"/>
+                    </svg>
+                </div>
+                <div class="spinner-layer ghost-2">
+                    <svg viewBox="0 0 127.14 96.36">
+                        <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.06,72.06,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.71,32.65-1.82,56.6.39,80.21a105.73,105.73,0,0,0,32.17,16.15,77.7,77.7,0,0,0,6.89-11.11,68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1,105.25,105.25,0,0,0,32.19-16.14c2.64-27.38-4.52-51.06-19.1-72.13ZM42.45,65.69C36.18,65.69,31,60,31,53s5.12-12.67,11.41-12.67S54,46,53.86,53,48.74,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5.12-12.67,11.41-12.67S96.08,46,95.94,53,90.82,65.69,84.69,65.69Z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="tip-container">
+                <div class="tip-label">Did you know</div>
+                <div class="tip-text" id="tipText">Loading awesome things...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth View -->
+    <div id="authView" class="view active">
+        <div class="bg-blob one"></div>
+        <div class="bg-blob two"></div>
+        <div class="container" id="mainContainer">
+            <div class="form-wrapper">
+                <div class="form-content" id="loginView">
+                    <h2 style="font-size: 2.2rem; font-weight: 700; margin-bottom: 0.5rem;">Welcome Back</h2>
+                    <p class="subtitle">Enter your details to sign in</p>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="loginEmail" placeholder="name@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="loginPassword" placeholder="••••••••">
+                    </div>
+                    <button id="loginBtn" class="primary-btn" style="width: 100%; margin-top: 1rem; height: 50px; font-size: 1rem;">Sign In</button>
+                    <p style="text-align: center; margin-top: 2rem; font-size: 0.95rem; color: var(--text-muted);">
+                        Don't have an account? <span id="toSignup" style="color: var(--primary); cursor: pointer; font-weight: 600; text-decoration: underline;">Create one</span>
+                    </p>
+                </div>
+                <div class="form-content" id="signupView">
+                    <h2 style="font-size: 2.2rem; font-weight: 700; margin-bottom: 0.5rem;">Create Account</h2>
+                    <p class="subtitle">Join JaVibe today</p>
+                    <div style="display: flex; gap: 12px;">
+                        <div class="form-group" style="flex: 1;">
+                            <label>First Name</label>
+                            <input type="text" id="firstName" placeholder="John">
+                        </div>
+                        <div class="form-group" style="flex: 1;">
+                            <label>Last Name</label>
+                            <input type="text" id="lastName" placeholder="Doe">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="signupEmail" placeholder="name@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="signupPassword" placeholder="••••••••">
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" id="confirmPassword" placeholder="••••••••">
+                    </div>
+                    <button id="signupBtn" class="primary-btn" style="width: 100%; margin-top: 1rem; height: 50px; font-size: 1rem;">Create Account</button>
+                    <p style="text-align: center; margin-top: 2rem; font-size: 0.95rem; color: var(--text-muted);">
+                        Already have an account? <span id="toLogin" style="color: var(--primary); cursor: pointer; font-weight: 600; text-decoration: underline;">Sign in</span>
+                    </p>
+                </div>
+            </div>
+            <div id="message"></div>
+        </div>
+    </div>
+
+    <!-- Dashboard View -->
+    <div id="dashboardView" class="view">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-content">
+                <div class="logo-section">
+                    <div class="logo-header">
+                        <div class="logo-icon"><i class="fas fa-cube"></i></div>
+                        <span class="logo-text">JaVibe</span>
+                    </div>
+                    <span class="logo-subtitle">Music's come in a great hands.</span>
+                    <button class="collapse-btn" id="collapseBtn"><i class="fas fa-angles-left"></i> <span>Collapse</span></button>
+                </div>
+
+                <div class="nav-section">
+                    <p class="nav-label">Main</p>
+                    <div class="nav-item active" onclick="showSection('home')">
+                        <div class="nav-item-content"><i class="fas fa-home"></i> Home</div>
+                    </div>
+                    <div class="nav-item" onclick="showSection('dashboard')">
+                        <div class="nav-item-content"><i class="fas fa-music"></i> Music</div>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <p class="nav-label">Account</p>
+                    <div class="nav-item" onclick="showSection('profile')">
+                        <div class="nav-item-content"><i class="fas fa-user"></i> Profile</div>
+                    </div>
+                    <div class="nav-item" onclick="showSection('settings')">
+                        <div class="nav-item-content"><i class="fas fa-cog"></i> Settings</div>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <p class="nav-label">System</p>
+                    <div class="nav-item" onclick="handleGenericAction('Node Status')">
+                        <div class="nav-item-content"><i class="fas fa-microchip"></i> Node Status</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="nav-item" onclick="handleLogout()">
+                    <div class="nav-item-content"><i class="fas fa-sign-out-alt"></i> Sign Out</div>
+                </div>
+                <p style="font-size: 0.65rem; color: var(--text-muted); margin-top: 10px; padding-left: 10px;">JaMusic Research and Coding Corp.</p>
+            </div>
+        </aside>
+
+        <!-- Mobile/Collapse Menu Toggle -->
+        <button class="menu-toggle" id="menuToggle">
+            <i class="fas fa-bars"></i>
+        </button>
+
+        <main class="main-content">
+            <div class="top-bar">
+                <div class="header-icons">
+                    <i class="fas fa-globe header-icon-btn" onclick="window.open('https://javibe.vercel.app', '_blank')" title="Visit Website"></i>
+                    <div style="width: 1px; height: 20px; background: rgba(255,255,255,0.1);"></div>
+                    <div class="user-profile-badge" onclick="showSection('profile')">
+                        <div class="user-avatar" id="avatarLetter">U</div>
+                        <span id="headerUsername" style="font-weight: 500; font-size: 0.9rem;">User</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="homeSection">
+                <div class="dashboard-header">
+                    <h1 class="dashboard-title"><i class="fas fa-home" style="color: #3b82f6; font-size: 1.8rem;"></i> Home 🎄</h1>
+                    <p class="dashboard-subtitle">✨ Welcome to your personal space.</p>
+                </div>
+                
+                <div class="discord-bar" style="background: linear-gradient(90deg, rgba(88, 101, 242, 0.1) 0%, rgba(88, 101, 242, 0.05) 100%); border: 1px solid rgba(88, 101, 242, 0.2); color: white; padding: 16px 20px; border-radius: 20px; display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 2rem; backdrop-filter: blur(10px);">
+                    <div style="display: flex; align-items: center; gap: 16px; min-width: 0;">
+                        <div class="discord-icon-container" style="background: #5865f2; width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 15px rgba(88, 101, 242, 0.3);">
+                            <i class="fab fa-discord" style="font-size: 22px;"></i>
+                        </div>
+                        <div style="min-width: 0;">
+                            <h4 style="margin: 0; font-size: 1.1rem; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Join our Discord Community!</h4>
+                            <p style="margin: 4px 0 0; color: var(--text-muted); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Get the latest updates and real-time support.</p>
+                        </div>
+                    </div>
+                    <a href="https://discord.gg/QYTgmVq96v" target="_blank" class="primary-btn" style="text-decoration: none; padding: 0.6rem 1.2rem; font-size: 0.85rem; flex-shrink: 0; background: #5865f2;">Join Server</a>
+                </div>
+
+                <div class="welcome-card" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); padding: 2.5rem; border-radius: 24px; margin-bottom: 2rem; backdrop-filter: blur(10px);">
+                    <h2 style="margin-bottom: 1rem; font-size: 1.8rem; font-weight: 700;">Welcome to JaVibe, <span id="welcomeUser" style="color: var(--primary);">User</span>! 👋</h2>
+                    <p style="color: var(--text-muted); font-size: 1rem; line-height: 1.7; margin-bottom: 1.5rem; max-width: 800px;">
+                        Ready to start your day with some freshly baked songs? JaVibe offers the best free 24/7 musics because we offer performance and the ability of not having to keep your phone on all-day! We do not take battery consumption.
+                    </p>
+                    <p style="color: var(--text-muted); font-size: 1rem; line-height: 1.7; margin-bottom: 2rem;">
+                        We recommend you to join our Discord Server if you're looking to reach out for support! Our community is pretty welcoming and will help you get started in no time.
+                    </p>
+                    
+                    <div class="action-links" style="display: flex; gap: 30px; flex-wrap: wrap;">
+                        <a href="https://discord.gg/QYTgmVq96v" target="_blank" class="action-link" style="color: var(--primary); text-decoration: none; font-size: 0.95rem; display: flex; align-items: center; gap: 10px; font-weight: 600; transition: opacity 0.2s;">
+                            <i class="fab fa-discord" style="font-size: 1.2rem;"></i> Join our Discord Server!
+                        </a>
+                        <a href="#" class="action-link" onclick="handleUsernameChange()" style="color: var(--text-main); text-decoration: none; font-size: 0.95rem; display: flex; align-items: center; gap: 10px; opacity: 0.7; transition: opacity 0.2s;">
+                            <i class="fas fa-user-edit"></i> Change your username
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div id="dashboardSection" style="display: none;">
+                <div class="dashboard-header">
+                    <h1 class="dashboard-title"><i class="fas fa-search" style="color: var(--primary); font-size: 1.8rem;"></i> Music Search</h1>
+                    <p class="dashboard-subtitle">🎵 Explore millions of tracks and videos from YouTube.</p>
+                </div>
+
+                <div class="search-container">
+                    <div style="position: relative; display: flex; gap: 12px;">
+                        <input type="text" id="musicSearchInput" placeholder="Search for tracks, artists, or albums...">
+                        <button id="musicSearchBtn" class="primary-btn"><i class="fas fa-search"></i> Search</button>
+                    </div>
+                </div>
+
+                <div id="musicResults" class="results-grid">
+                    <!-- Results will appear here -->
+                    <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">
+                        <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.1;"></i>
+                        <p>Search for your favorite tracks</p>
+                    </div>
+                </div>
+
+                </div>
+            </div>
+
+            <!-- Music Player Bar (Global) -->
+            <div id="musicPlayerBar" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10, 10, 12, 0.98); backdrop-filter: blur(15px); border-top: 1px solid rgba(255, 255, 255, 0.1); z-index: 1000; flex-direction: column;">
+                <!-- Expanded Video Container -->
+                <div id="playerSection">
+                    <div id="ytPlayerContainer" style="width: 100%; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--glass-border);">
+                        <iframe id="adfree-player" style="width: 100%; height: 100%; border: none;" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+                    </div>
+                </div>
+                
+                <div id="playerMetadata" style="padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0;">
+                            <img id="playerThumb" src="" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
+                            <div style="min-width: 0;">
+                                <h4 id="playerTitle" style="margin: 0; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white;"></h4>
+                                <p id="playerArtist" style="margin: 0; font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></p>
+                            </div>
+                        </div>
+
+                        <!-- Controls & Volume -->
+                        <div style="display: flex; align-items: center; gap: 20px;">
+                            <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 5px 12px; border-radius: 20px;">
+                                <i class="fas fa-volume-up" style="font-size: 0.8rem; color: var(--text-muted);"></i>
+                                <input type="range" id="volumeSlider" min="0" max="100" value="100" style="width: 80px; height: 4px; accent-color: var(--primary);">
+                            </div>
+                            <button onclick="togglePlayer()" class="icon-btn" style="color: white; font-size: 1.2rem;"><i class="fas fa-chevron-up" id="togglePlayerIcon"></i></button>
+                        </div>
+                    </div>
+            </div>
+
+            <div id="profileSection" style="display: none;">
+                <h2>User Profile</h2>
+                <div class="welcome-card" style="margin-top: 1.5rem;">
+                    <p><strong>Email:</strong> <span id="profileEmail">...</span></p>
+                    <p><strong>Display Name:</strong> <span id="profileName">...</span></p>
+                    <p><strong>Account Status:</strong> Verified</p>
+                </div>
+            </div>
+
+            <div id="settingsSection" style="display: none;">
+                <h2>Account Settings</h2>
+                <div class="welcome-card" style="margin-top: 1.5rem;">
+                    <p>Account management and other settings are currently in development.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { 
+        getAuth, 
+        createUserWithEmailAndPassword, 
+        signInWithEmailAndPassword, 
+        sendEmailVerification,
+        updateProfile,
+        onAuthStateChanged,
+        signOut
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    // --- KEEP FIREBASE CONFIG ---
+    const firebaseConfig = {
+          apiKey: "AIzaSyApKLZIjUZSQnKJCngvp0KZPYJf3zBNaCc",
+  authDomain: "jamusic-v2.firebaseapp.com",
+  projectId: "jamusic-v2",
+  storageBucket: "jamusic-v2.firebasestorage.app",
+  messagingSenderId: "765002295434",
+  appId: "1:765002295434:web:a4c9ba98c68dbcd84f2573"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // --- LOADING SCREEN LOGIC ---
+    const tips = [
+        "JaVibe is designed for speed and simplicity.",
+        "You can upgrade to Premium for exclusive features.",
+        "Our Discord community is always here to help!",
+        "Music sounds better when shared with friends.",
+        "You can change your username in the settings.",
+        "Node status shows you the real-time health of our systems.",
+        "JaVibe was built with passion for developers.",
+        "Check out our global website for more JaVibe updates."
+    ];
+
+    function initLoading() {
+        const loadingScreen = document.getElementById('loadingScreen');
+        const tipText = document.getElementById('tipText');
+        
+        // Pick a random tip
+        const randomTip = tips[Math.floor(Math.random() * tips.length)];
+        if (tipText) tipText.textContent = randomTip;
+
+        // Hide loading screen after 3 seconds
+        setTimeout(() => {
+            if (loadingScreen) {
+                loadingScreen.classList.add('hidden');
+            }
+        }, 3000);
+    }
+
+    // Initialize loading screen
+    initLoading();
+
+    // --- SNOWFLAKE LOGIC ---
+    function createSnowflake() {
+        const snowflake = document.createElement('div');
+        snowflake.classList.add('snowflake');
+        snowflake.innerHTML = '•';
+        snowflake.style.left = Math.random() * 100 + 'vw';
+        snowflake.style.animationDuration = Math.random() * 3 + 2 + 's';
+        snowflake.style.opacity = Math.random();
+        snowflake.style.fontSize = Math.random() * 10 + 10 + 'px';
+        
+        document.body.appendChild(snowflake);
+        
+        setTimeout(() => {
+            snowflake.remove();
+        }, 5000);
+    }
+    setInterval(createSnowflake, 100);
+
+    // --- VIEW MANAGEMENT ---
+    const authView = document.getElementById('authView');
+    const dashboardView = document.getElementById('dashboardView');
+    const welcomeUser = document.getElementById('welcomeUser');
+    const headerUsername = document.getElementById('headerUsername');
+    const avatarLetter = document.getElementById('avatarLetter');
+    const sidebar = document.getElementById('sidebar');
+    const menuToggle = document.getElementById('menuToggle');
+    const collapseBtn = document.getElementById('collapseBtn');
+
+    // Consolidated Sidebar Toggle Logic
+    const handleSidebarToggle = () => {
+        if (!sidebar) return;
+        
+        if (window.innerWidth <= 1024) {
+            // Mobile: Toggle 'open' class
+            sidebar.classList.toggle('open');
+            const icon = menuToggle.querySelector('i');
+            if (sidebar.classList.contains('open')) {
+                icon.classList.replace('fa-bars', 'fa-times');
+            } else {
+                icon.classList.replace('fa-times', 'fa-bars');
+            }
+        } else {
+            // Desktop: Toggle 'collapsed' class
+            sidebar.classList.toggle('collapsed');
+            // Reset icon just in case
+            if (menuToggle) {
+                const icon = menuToggle.querySelector('i');
+                icon.classList.replace('fa-times', 'fa-bars');
+            }
+        }
+    };
+
+    if (menuToggle) menuToggle.onclick = handleSidebarToggle;
+    if (collapseBtn) collapseBtn.onclick = handleSidebarToggle;
+
+    // Close sidebar on nav item click (mobile)
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+            if (window.innerWidth <= 1024 && sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+                if (menuToggle) {
+                    menuToggle.querySelector('i').classList.replace('fa-times', 'fa-bars');
+                }
+            }
+        });
+    });
+
+    // Global toggle function
+    window.toggleView = (showSignup) => {
+        const container = document.getElementById('mainContainer');
+        if (showSignup) {
+            container.classList.add('show-signup');
+        } else {
+            container.classList.remove('show-signup');
+        }
+    };
+
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            if (user.emailVerified) {
+                // Fully verified, show dashboard
+                authView.classList.remove('active');
+                setTimeout(() => {
+                    authView.style.display = 'none';
+                    dashboardView.style.display = 'flex';
+                    setTimeout(() => dashboardView.classList.add('active'), 50);
+                    
+                    const displayName = user.displayName || user.email.split('@')[0];
+                    welcomeUser.textContent = displayName;
+                    headerUsername.textContent = displayName;
+                    avatarLetter.textContent = displayName.charAt(0).toUpperCase();
+                    
+                    document.getElementById('profileEmail').textContent = user.email;
+                    document.getElementById('profileName').textContent = user.displayName || 'N/A';
+                }, 400);
+            } else {
+                // Logged in but not verified
+                authView.style.display = 'flex';
+                dashboardView.style.display = 'none';
+                authView.classList.add('active');
+                showMessage("Please verify your email! Check your inbox.", true);
+                
+                const msgDiv = document.getElementById('message');
+                if (!document.getElementById('refreshVerifyBtn')) {
+                    const btn = document.createElement('button');
+                    btn.id = 'refreshVerifyBtn';
+                    btn.textContent = "I've Verified (Refresh)";
+                    btn.className = 'primary-btn';
+                    btn.style.marginTop = '10px';
+                    btn.style.width = '100%';
+                    btn.onclick = () => location.reload();
+                    msgDiv.appendChild(btn);
+                }
+                console.log("JaVibe: User verification pending.");
+            }
+        } else {
+            // Logged out, show auth
+            dashboardView.classList.remove('active');
+            setTimeout(() => {
+                dashboardView.style.display = 'none';
+                authView.style.display = 'flex';
+                setTimeout(() => authView.classList.add('active'), 50);
+                // Re-initialize buttons just in case
+                if (typeof initAuthButtons === 'function') initAuthButtons();
+            }, 400);
+        }
+    });
+
+    // Event listeners for switching
+    const toSignup = document.getElementById('toSignup');
+    const toLogin = document.getElementById('toLogin');
+    if (toSignup) toSignup.onclick = () => toggleView(true);
+    if (toLogin) toLogin.onclick = () => toggleView(false);
+
+    window.showSection = (section) => {
+        document.getElementById('homeSection').style.display = 'none';
+        document.getElementById('dashboardSection').style.display = 'none';
+        document.getElementById('profileSection').style.display = 'none';
+        document.getElementById('settingsSection').style.display = 'none';
+        
+        const sectionId = `${section}Section`;
+        const targetSection = document.getElementById(sectionId);
+        if (targetSection) targetSection.style.display = 'block';
+
+        // Clear search results when switching to dashboard (Music)
+        if (section === 'dashboard') {
+            const resultsEl = document.getElementById('musicResults');
+            if (resultsEl) {
+                resultsEl.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">
+                        <i class="fas fa-music" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.2;"></i>
+                        <p>Search for something to see results</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Update nav active state
+        document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(item => {
+            if (item.getAttribute('onclick')?.includes(`'${section}'`)) {
+                item.classList.add('active');
+            }
+        });
+
+        // Update title and icon if dashboard section
+        if (section === 'dashboard') {
+            // Dashboard has its own title structure in the HTML
+        } else {
+            // For other sections, we could update the top title if needed
+        }
+    };
+
+    window.handleGenericAction = (action) => {
+        alert(`${action} functionality coming soon! This button is now linked.`);
+    };
+
+    // --- DASHBOARD BUTTON ACTIONS ---
+    window.handleLogout = async () => {
+        try {
+            await signOut(auth);
+            // Reload to ensure a clean state
+            window.location.reload();
+        } catch (error) {
+            console.error("Logout Error:", error);
+            alert("Error signing out. Please try again.");
+        }
+    };
+    window.handlePremium = () => alert("Redirecting to Premium Upgrade page...");
+    window.handleUsernameChange = () => {
+        const newName = prompt("Enter your new display name:");
+        if (newName) {
+            updateProfile(auth.currentUser, { displayName: newName })
+                .then(() => {
+                    alert("Username updated!");
+                    location.reload();
+                })
+                .catch(err => alert(err.message));
+        }
+    };
+
+    // --- PLAYER STATE ---
+    let player = null; // YouTube Player
+    let isPlaying = false;
+    let progressInterval;
+
+    function startProgressLoop() {
+        if (progressInterval) clearInterval(progressInterval);
+        progressInterval = setInterval(() => {
+            if (player && player.getCurrentTime && isPlaying) {
+                updateProgressBar(player.getCurrentTime(), player.getDuration());
+            }
+        }, 500);
+    }
+
+    function stopProgressLoop() {
+        if (progressInterval) {
+            clearInterval(progressInterval);
+            progressInterval = null;
+        }
+    }
+
+    function updateProgressBar(current, total) {
+        const progressBar = document.getElementById('progressBar');
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationEl = document.getElementById('duration');
+        
+        if (total > 0) {
+            const pct = (current / total) * 100;
+            progressBar.style.width = `${pct}%`;
+            
+            currentTimeEl.textContent = formatTime(current);
+            durationEl.textContent = formatTime(total);
+        }
+    }
+
+    function formatTime(seconds) {
+        if (isNaN(seconds)) return "0:00";
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    // --- AD-FREE PLAYER (PIPED) ---
+    // No initialization needed for iframe-based Piped player.
+
+    // --- SEARCH LOGIC (DUCKDUCKGO FALLBACK) ---
+    window.searchMusic = async function(query) {
+        if (!query) return;
+        
+        const resultsEl = document.getElementById('musicResults');
+        if (!resultsEl) return;
+        resultsEl.innerHTML = ''; 
+        
+        const btn = document.getElementById('musicSearchBtn');
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = "Searching...";
+        }
+        
+        resultsEl.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
+                <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); width: 30px; height: 30px; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
+                <p>Searching for "${query}"...</p>
+            </div>
+        `;
+
+        try {
+            // Step 1: Get VQD token from DDG
+            const ddgUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}&ia=videos`;
+            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(ddgUrl)}`;
+            
+            const response = await fetch(proxyUrl);
+            const text = await response.text();
+            const vqdMatch = text.match(/vqd="([^"]+)"/);
+            
+            if (!vqdMatch) throw new Error("Could not initialize search token.");
+            const vqd = vqdMatch[1];
+
+            // Step 2: Get video results using the token
+            const searchUrl = `https://duckduckgo.com/v.js?q=${encodeURIComponent(query)}&vqd=${vqd}&p=-1&ad=1&l=us-en&s=0&sp=0&v7exp=a`;
+            const searchProxy = `https://corsproxy.io/?${encodeURIComponent(searchUrl)}`;
+            
+            const searchResponse = await fetch(searchProxy);
+            const data = await searchResponse.json();
+
+            if (!data.results || data.results.length === 0) {
+                throw new Error("No results found.");
+            }
+
+            const results = data.results.map(item => ({
+                videoId: item.id,
+                title: item.title,
+                author: item.uploader || "YouTube",
+                thumb: item.image
+            })).filter(r => r.videoId);
+
+            window.displayResults(results);
+
+        } catch (err) {
+            console.error("JaVibe: Search failed", err);
+            resultsEl.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 2rem;">
+                    <p style="color: #fda4af; margin-bottom: 1rem;">Search is temporarily unavailable. Error: ${err.message}</p>
+                    <button onclick="window.searchMusic('${query.replace(/'/g, "\\'")}')" class="primary-btn" style="width: auto; padding: 8px 20px;">Retry Now</button>
+                </div>
+            `;
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = "Search Music";
+            }
+        }
+    }
+
+    window.displayResults = function(results) {
+        const resultsEl = document.getElementById('musicResults');
+        resultsEl.innerHTML = '';
+        if (!results || results.length === 0) {
+            resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">No results found.</p>`;
+            return;
+        }
+        results.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'music-card';
+            card.onclick = () => window.playYouTubeVideo(item.videoId, item.title, item.author, item.thumb);
+            
+            // Handle missing thumbnails or data
+            const thumbUrl = item.thumb || `https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg`;
+            const titleText = item.title || "Unknown Title";
+            const authorText = item.author || "YouTube Content";
+
+            card.innerHTML = `
+                <img src="${thumbUrl}" alt="${titleText}" onerror="this.src='https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg'">
+                <div class="music-card-content">
+                    <h5>${titleText}</h5>
+                    <p>${authorText}</p>
+                </div>
+            `;
+            resultsEl.appendChild(card);
+        });
+    }
+
+    window.playYouTubeVideo = async function(videoId, title, artist, thumb) {
+        const playerBar = document.getElementById('musicPlayerBar');
+        playerBar.style.display = 'flex';
+        document.getElementById('playerTitle').textContent = title;
+        document.getElementById('playerArtist').textContent = artist;
+        document.getElementById('playerThumb').src = thumb;
+        
+        const playerIframe = document.getElementById('adfree-player');
+        
+        // Auto-expand player
+        const section = document.getElementById('playerSection');
+        const icon = document.getElementById('togglePlayerIcon');
+        if (!section.classList.contains('expanded')) {
+            section.classList.add('expanded');
+            icon.classList.add('rotated');
+        }
+
+        // Use standard YouTube embed for maximum reliability
+        console.log(`JaVibe: Playing ${videoId} via YouTube official embed`);
+        playerIframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+    }
+
+    // Mirror switching logic removed as requested for standard YouTube player reliability
+
+    window.togglePlayPause = () => {
+        // Iframe controls its own playback. This is just a placeholder.
+        console.log("Use the player's internal controls for ad-free playback.");
+    };
+
+    window.togglePlayer = () => {
+        const playerSection = document.getElementById('playerSection');
+        const icon = document.getElementById('togglePlayerIcon');
+        
+        playerSection.classList.toggle('expanded');
+        icon.classList.toggle('rotated');
+    };
+
+    const searchBtn = document.getElementById('musicSearchBtn');
+    if (searchBtn) searchBtn.onclick = () => window.searchMusic(document.getElementById('musicSearchInput').value);
+    
+    const searchInput = document.getElementById('musicSearchInput');
+    if (searchInput) {
+        searchInput.onkeypress = (e) => { 
+            if (e.key === 'Enter') window.searchMusic(e.target.value); 
+        };
+    }
+
+    const volumeSlider = document.getElementById('volumeSlider');
+    if (volumeSlider) {
+        volumeSlider.addEventListener('input', (e) => {
+            // Piped embed doesn't support external volume API easily via simple iframe
+            console.log("Volume adjusted to:", e.target.value);
+        });
+    }
+
+    // --- AUTH LOGIC ---
+    function showMessage(msg, isError = false) {
+        const div = document.getElementById('message');
+        if (!div) return;
+        div.textContent = msg;
+        div.className = isError ? 'error' : 'success';
+        div.style.display = 'block';
+        console.log(`Auth Message: ${msg}`);
+    }
+
+    function initAuthButtons() {
+        const signupBtn = document.getElementById('signupBtn');
+        const loginBtn = document.getElementById('loginBtn');
+
+        if (signupBtn) {
+            signupBtn.onclick = async () => {
+                const firstName = document.getElementById('firstName').value;
+                const lastName = document.getElementById('lastName').value;
+                const email = document.getElementById('signupEmail').value;
+                const password = document.getElementById('signupPassword').value;
+                const confirm = document.getElementById('confirmPassword').value;
+
+                if (!firstName || !lastName || !email || !password || password !== confirm) {
+                    return showMessage("Check all fields and password match", true);
+                }
+
+                signupBtn.disabled = true;
+                signupBtn.textContent = "Creating...";
+
+                try {
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    await updateProfile(userCredential.user, { displayName: `${firstName} ${lastName}` });
+                    await sendEmailVerification(userCredential.user);
+                    showMessage("Verification email sent! Please check your inbox.");
+                } catch (error) {
+                    showMessage(error.message, true);
+                } finally {
+                    signupBtn.disabled = false;
+                    signupBtn.textContent = "Create Account";
+                }
+            };
+        }
+
+        if (loginBtn) {
+            loginBtn.onclick = async () => {
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+
+                if (!email || !password) return showMessage("Please enter email and password", true);
+
+                loginBtn.disabled = true;
+                loginBtn.textContent = "Signing In...";
+
+                try {
+                    await signInWithEmailAndPassword(auth, email, password);
+                    // onAuthStateChanged handles the rest
+                } catch (error) {
+                    showMessage(error.message, true);
+                } finally {
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = "Sign In";
+                }
+            };
+        }
+    }
+
+    // Initial call
+    initAuthButtons();
+
+    if (collapseBtn) {
+        collapseBtn.onclick = () => {
+            sidebar.classList.toggle('collapsed');
+            const icon = collapseBtn.querySelector('i');
+            const text = collapseBtn.querySelector('span');
+            if (sidebar.classList.contains('collapsed')) {
+                icon.className = 'fas fa-angles-right';
+                text.textContent = 'Expand';
+            } else {
+                icon.className = 'fas fa-angles-left';
+                text.textContent = 'Collapse';
+            }
+        };
+    }
+
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', (e) => {
+        if (window.innerWidth <= 1024) {
+            if (sidebar && menuToggle && !sidebar.contains(e.target) && !menuToggle.contains(e.target) && sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+            }
+        }
+    });
+</script>
+
+</body>
+</html>
