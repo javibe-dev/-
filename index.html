@@ -1000,8 +1000,8 @@
                 <div id="musicResults" class="results-grid">
                     <!-- Results will appear here -->
                     <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">
-                        <i class="fas fa-music" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.2;"></i>
-                        <p>Search for something to see results</p>
+                        <i class="fas fa-search" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.1;"></i>
+                        <p>Search for your favorite tracks</p>
                     </div>
                 </div>
 
@@ -1413,21 +1413,27 @@
     let lastSearchQuery = "";
     async function searchMusic(query) {
         if (!query) return;
-        lastSearchQuery = query;
-        window.lastSearchQuery = query; // Ensure it's globally accessible for the retry button
+        
+        // FORCE CLEAR EVERYTHING
         const resultsEl = document.getElementById('musicResults');
+        resultsEl.innerHTML = ''; // Wipe previous results immediately
+        
+        lastSearchQuery = query;
+        window.lastSearchQuery = query;
         const btn = document.getElementById('musicSearchBtn');
         const input = document.getElementById('musicSearchInput');
         
-        // Clear input so searching same thing twice works easily
+        // Clear input to allow re-searching
         if (input) input.value = '';
         
         btn.disabled = true;
         btn.textContent = "Searching...";
+        
+        // Show loading state after clearing
         resultsEl.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
                 <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); width: 30px; height: 30px; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
-                <p>Using yt-dlp logic to find the best streams...</p>
+                <p>Searching for "${query}"...</p>
             </div>
         `;
 
@@ -1594,10 +1600,19 @@
         document.getElementById('playerArtist').textContent = artist;
         document.getElementById('playerThumb').src = thumb;
         
-        // Using Piped (Ad-Free YouTube Frontend) for the embed
-        const adFreeEmbedUrl = `https://pipedapi.kavin.rocks/embed/${videoId}`;
+        // List of reliable ad-free YouTube frontend instances
+        const instances = [
+            `https://invidious.no-logs.com/embed/${videoId}`,
+            `https://yewtu.be/embed/${videoId}`,
+            `https://invidious.lunar.icu/embed/${videoId}`,
+            `https://pipedapi.kavin.rocks/embed/${videoId}`
+        ];
+
         const playerIframe = document.getElementById('adfree-player');
-        playerIframe.src = adFreeEmbedUrl;
+        
+        // Try to load the first instance, if it fails (not easy to detect via iframe src),
+        // we'll at least use a more reliable one as primary.
+        playerIframe.src = instances[0];
 
         // Auto-expand player when starting new video
         const section = document.getElementById('playerSection');
