@@ -1298,19 +1298,34 @@
     }
 
     // --- YOUTUBE CONFIG ---
-    // API KEY REMOVED: Using cookie-based search to bypass quotas
-    const YT_API_KEY = null; 
-
     let playerReady = false;
+    let playerRetryCount = 0;
 
-    window.onYouTubeIframeAPIReady = () => {
+    function initYouTubePlayer() {
+        if (typeof YT === 'undefined' || !YT.Player) {
+            if (playerRetryCount < 10) {
+                playerRetryCount++;
+                setTimeout(initYouTubePlayer, 1000);
+            }
+            return;
+        }
+
+        const playerDiv = document.getElementById('youtube-player');
+        if (!playerDiv) {
+            if (playerRetryCount < 10) {
+                playerRetryCount++;
+                setTimeout(initYouTubePlayer, 1000);
+            }
+            return;
+        }
+
         player = new YT.Player('youtube-player', {
             height: '100%',
             width: '100%',
-            playerVars: { 'autoplay': 1, 'controls': 1, 'modestbranding': 1 },
+            playerVars: { 'autoplay': 1, 'controls': 1, 'modestbranding': 1, 'origin': window.location.origin },
             events: {
                 'onReady': (event) => {
-                    console.log("YouTube Player Ready");
+                    console.log("JaVibe: YouTube Player Ready");
                     playerReady = true;
                 },
                 'onStateChange': (event) => {
@@ -1324,10 +1339,46 @@
                         stopProgressLoop();
                     }
                 },
-                'onError': (e) => console.error("YT Player Error:", e)
+                'onError': (e) => {
+                    console.error("JaVibe: YT Player Error:", e);
+                    // If video restricted, alert user about cookies
+                    if (e.data === 101 || e.data === 150) {
+                        alert("This video is restricted. Make sure you've added your cookies.txt content in Settings!");
+                    }
+                }
             }
         });
-    };
+    }
+
+    window.onYouTubeIframeAPIReady = initYouTubePlayer;
+
+    // Helper to fetch through multiple CORS proxies
+    async function fetchWithProxy(url, type = 'text') {
+        const proxies = [
+            `https://corsproxy.io/?${encodeURIComponent(url)}`,
+            `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+            `https://thingproxy.freeboard.io/fetch/${url}`,
+            `https://api.codetabs.com/v1/proxy?quest=${url}`
+        ];
+
+        for (const proxy of proxies) {
+            try {
+                console.log(`JaVibe: Trying proxy ${proxy}`);
+                const response = await fetch(proxy, { method: 'GET', headers: { 'Accept': 'application/json, text/plain, */*' } });
+                if (!response.ok) continue;
+                
+                if (proxy.includes('allorigins.win')) {
+                    const data = await response.json();
+                    return data.contents;
+                }
+                
+                return await response.text();
+            } catch (err) {
+                console.warn(`JaVibe: Proxy ${proxy} failed`, err);
+            }
+        }
+        throw new Error("All proxies failed.");
+    }
 
     async function searchMusic(query) {
         if (!query) return;
@@ -1339,27 +1390,27 @@
         resultsEl.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
                 <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); width: 30px; height: 30px; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
-                <p>Establishing Secure Stream...</p>
+                <p>Finding the best streams...</p>
             </div>
         `;
 
-        // Direct Link Support
+        // 1. Direct Link/ID Check
         const ytIdMatch = query.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-        if (ytIdMatch) {
-            playYouTubeVideo(ytIdMatch[1], "Direct Link", "YouTube", `https://img.youtube.com/vi/${ytIdMatch[1]}/hqdefault.jpg`);
+        const directId = (ytIdMatch ? ytIdMatch[1] : (query.length === 11 && !query.includes(' ') ? query : null));
+        
+        if (directId) {
+            playYouTubeVideo(directId, "Direct Link", "YouTube", `https://img.youtube.com/vi/${directId}/hqdefault.jpg`);
             btn.disabled = false;
             btn.textContent = "Search Music";
             return;
         }
 
-        // Search Strategy: Use a stable CORS proxy to fetch YouTube's own search results
+        // 2. Primary Search: Scrape YouTube via Proxies
         try {
-            const proxyUrl = 'https://api.allorigins.win/get?url=';
-            const targetUrl = encodeURIComponent(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`);
-            const response = await fetch(`${proxyUrl}${targetUrl}`);
-            const data = await response.json();
-            const html = data.contents;
+            const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`;
+            const html = await fetchWithProxy(searchUrl);
 
+            // Robust regex for ytInitialData or raw HTML
             const regex = /"videoRenderer":\{"videoId":"([^"]+)","thumbnail":\{"thumbnails":\[\{"url":"([^"]+)"[^}]+\]\},"title":\{"runs":\[\{"text":"([^"]+)"\}\][^}]+\},"longBylineText":\{"runs":\[\{"text":"([^"]+)"/g;
             let match;
             const results = [];
@@ -1374,33 +1425,21 @@
             }
 
             if (results.length > 0) {
-                resultsEl.innerHTML = '';
-                results.forEach(item => {
-                    const card = document.createElement('div');
-                    card.className = 'music-card';
-                    card.onclick = () => playYouTubeVideo(item.videoId, item.title, item.author, item.thumb);
-                    card.innerHTML = `
-                        <img src="${item.thumb}" alt="${item.title}" onerror="this.src='https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg'">
-                        <div class="music-card-content">
-                            <h5>${item.title}</h5>
-                            <p>${item.author}</p>
-                        </div>
-                    `;
-                    resultsEl.appendChild(card);
-                });
+                displayResults(results);
                 btn.disabled = false;
                 btn.textContent = "Search Music";
                 return;
             }
         } catch (e) {
-            console.warn("Primary search failed, trying fallback...", e);
+            console.warn("JaVibe: Primary search failed, trying fallback...", e);
         }
 
-        // Fallback Strategy: Piped API with rotation
+        // 3. Fallback: Piped API
         const pipedInstances = [
             'https://pipedapi.kavin.rocks',
             'https://piped-api.garudalinux.org',
-            'https://pipedapi.adminforge.de'
+            'https://pipedapi.adminforge.de',
+            'https://pa.it-f.at'
         ];
 
         for (const instance of pipedInstances) {
@@ -1409,15 +1448,13 @@
                 const data = await response.json();
                 const items = data.items || [];
                 if (items.length > 0) {
-                    resultsEl.innerHTML = '';
-                    items.forEach(item => {
-                        const vId = item.url.split('v=')[1] || item.url.split('/').pop();
-                        const card = document.createElement('div');
-                        card.className = 'music-card';
-                        card.onclick = () => playYouTubeVideo(vId, item.title, item.uploaderName, item.thumbnail);
-                        card.innerHTML = `<img src="${item.thumbnail}"> <div class="music-card-content"><h5>${item.title}</h5><p>${item.uploaderName}</p></div>`;
-                        resultsEl.appendChild(card);
-                    });
+                    const results = items.map(item => ({
+                        videoId: item.url.split('v=')[1] || item.url.split('/').pop(),
+                        title: item.title,
+                        author: item.uploaderName,
+                        thumb: item.thumbnail
+                    }));
+                    displayResults(results);
                     btn.disabled = false;
                     btn.textContent = "Search Music";
                     return;
@@ -1425,9 +1462,27 @@
             } catch (err) { continue; }
         }
 
-        resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">No results found. Try a different search term or paste a link.</p>`;
+        resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">No results found. Try a more specific search or paste a YouTube link.</p>`;
         btn.disabled = false;
         btn.textContent = "Search Music";
+    }
+
+    function displayResults(results) {
+        const resultsEl = document.getElementById('musicResults');
+        resultsEl.innerHTML = '';
+        results.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'music-card';
+            card.onclick = () => playYouTubeVideo(item.videoId, item.title, item.author, item.thumb);
+            card.innerHTML = `
+                <img src="${item.thumb}" alt="${item.title}" onerror="this.src='https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg'">
+                <div class="music-card-content">
+                    <h5>${item.title}</h5>
+                    <p>${item.author}</p>
+                </div>
+            `;
+            resultsEl.appendChild(card);
+        });
     }
 
     async function playYouTubeVideo(videoId, title, artist, thumb) {
@@ -1436,11 +1491,14 @@
             document.getElementById('playerTitle').textContent = title;
             document.getElementById('playerArtist').textContent = artist;
             document.getElementById('playerThumb').src = thumb;
-            player.loadVideoById(videoId);
+            
+            if (player && player.loadVideoById) {
+                player.loadVideoById(videoId);
+            }
         };
 
         if (!playerReady || !player || !player.loadVideoById) {
-            console.log("Waiting for YouTube Player...");
+            console.log("JaVibe: Waiting for Player...");
             let attempts = 0;
             const wait = setInterval(() => {
                 attempts++;
@@ -1449,7 +1507,7 @@
                     actuallyPlay();
                 } else if (attempts > 20) {
                     clearInterval(wait);
-                    alert("YouTube Player is taking too long to load. Please refresh the page.");
+                    alert("Player initialization failed. Please refresh the page.");
                 }
             }, 500);
             return;
