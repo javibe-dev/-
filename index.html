@@ -10,25 +10,6 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <script src="https://www.youtube.com/iframe_api"></script>
     <style>
-        #ytPlayerContainer.in-mobile-overlay {
-            position: fixed !important;
-            top: 50% !important;
-            left: 50% !important;
-            transform: translate(-50%, -50%) scale(1) !important;
-            width: 90% !important;
-            max-width: 600px !important;
-            z-index: 2100 !important;
-            transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1) !important;
-            opacity: 1 !important;
-            visibility: visible !important;
-        }
-
-        #ytPlayerContainer.in-mobile-overlay.hidden-tab {
-            opacity: 0 !important;
-            visibility: hidden !important;
-            pointer-events: none !important;
-        }
-
         :root {
             --primary: #6366f1;
             --primary-hover: #4f46e5;
@@ -45,6 +26,17 @@
             padding: 0;
             box-sizing: border-box;
             font-family: 'Outfit', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            outline: none !important;
+        }
+
+        *:focus, *:active, button:focus, input:focus, textarea:focus {
+            outline: none !important;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        button, input, a, div {
+            -webkit-tap-highlight-color: transparent;
         }
 
         body {
@@ -821,20 +813,67 @@
             display: flex;
             flex-direction: column;
             transform: translateY(100%);
-            transition: transform 0.6s cubic-bezier(0.32, 0.72, 0, 1);
+            transition: transform 0.6s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.4s ease;
             padding: 20px;
             color: white;
             overflow: hidden;
-            visibility: hidden;
             pointer-events: none;
             opacity: 0;
+            will-change: transform;
         }
 
         #mobilePlayerOverlay.active {
-            visibility: visible;
             pointer-events: auto;
             transform: translateY(0);
             opacity: 1;
+        }
+
+        /* Ensure overlay is always visible during transition */
+        #mobilePlayerOverlay.active, 
+        #mobilePlayerOverlay:not(.active) {
+            display: flex;
+        }
+
+        /* But hide it completely when it's at the bottom and not animating */
+        #mobilePlayerOverlay:not(.active) {
+            /* opacity: 0; transform handled above */
+        }
+
+        /* Video logic for mobile */
+        #ytPlayerContainer.in-mobile-overlay {
+            position: fixed !important;
+            top: 40% !important; /* Moved up slightly for better visibility */
+            left: 50% !important;
+            transform: translate(-50%, -50%) scale(1) !important;
+            width: 90% !important;
+            max-width: 600px !important;
+            z-index: 2100 !important;
+            transition: all 0.5s cubic-bezier(0.32, 0.72, 0, 1) !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+            border-radius: 12px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            display: block !important; /* Ensure it's displayed */
+        }
+
+        #ytPlayerContainer.in-mobile-overlay.hidden-tab {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+            transform: translate(-50%, -45%) scale(0.95) !important;
+        }
+
+        /* Ensure parent doesn't hide it on mobile */
+        @media (max-width: 768px) {
+            #playerSection {
+                display: block !important;
+                height: 0;
+                overflow: visible;
+                position: relative;
+            }
+            #ytPlayerContainer:not(.in-mobile-overlay) {
+                display: none !important;
+            }
         }
 
         .mobile-progress-section {
@@ -922,18 +961,23 @@
             white-space: nowrap;
             width: 100%;
             margin-bottom: 5px;
-            mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+            position: relative;
+            height: 2.5rem; /* Ensure enough height */
+            display: flex;
+            align-items: center;
         }
 
         .marquee-text {
             display: inline-block;
-            font-size: 1.4rem;
-            font-weight: 700;
-            padding-left: 10%;
+            font-size: 1.8rem; /* Slightly larger */
+            font-weight: 800;
+            color: #ffffff !important;
+            min-width: 100%;
+            text-shadow: 0 2px 10px rgba(0,0,0,0.5);
         }
 
         .marquee-animate {
-            animation: marquee 10s linear infinite;
+            animation: marquee 15s linear infinite;
         }
 
         @keyframes marquee {
@@ -1617,24 +1661,32 @@
         if (show) {
             overlay.classList.add('active');
             document.body.style.overflow = 'hidden';
-            window.checkMarquee();
             
             if (desktopContainer) {
                 desktopContainer.classList.add('in-mobile-overlay');
-                // Check current tab to see if it should be hidden
+                // Check current tab
                 const videoBtn = document.getElementById('mobileTabVideo');
-                if (videoBtn && !videoBtn.classList.contains('active')) {
-                    desktopContainer.classList.add('hidden-tab');
-                } else {
+                if (videoBtn && videoBtn.classList.contains('active')) {
                     desktopContainer.classList.remove('hidden-tab');
+                } else {
+                    desktopContainer.classList.add('hidden-tab');
                 }
             }
+            
+            // Re-check marquee after overlay is visible
+            setTimeout(() => {
+                window.checkMarquee();
+            }, 500); // Give it enough time to be visible
         } else {
             overlay.classList.remove('active');
             document.body.style.overflow = '';
             
-            // Wait for transition (0.6s) before removing classes from iframe container
-            // to avoid "snapping" back while the overlay is still visible
+            // Re-hide video container if it was in overlay mode
+            if (desktopContainer) {
+                desktopContainer.classList.add('hidden-tab');
+            }
+
+            // Remove classes after transition finishes for a clean exit
             setTimeout(() => {
                 if (!overlay.classList.contains('active')) {
                     if (desktopContainer) {
@@ -1642,7 +1694,7 @@
                         desktopContainer.classList.remove('hidden-tab');
                     }
                 }
-            }, 600);
+            }, 600); // Matches the 0.6s transition duration
         }
     };
 
@@ -1655,13 +1707,22 @@
         if (tab === 'audio') {
             audioBtn.classList.add('active');
             videoBtn.classList.remove('active');
-            artView.classList.remove('hidden');
+            if (artView) {
+                artView.style.display = 'flex';
+                setTimeout(() => artView.classList.remove('hidden'), 10);
+            }
             if (desktopContainer) desktopContainer.classList.add('hidden-tab');
         } else {
             videoBtn.classList.add('active');
             audioBtn.classList.remove('active');
-            artView.classList.add('hidden');
-            if (desktopContainer) desktopContainer.classList.remove('hidden-tab');
+            if (artView) {
+                artView.classList.add('hidden');
+                setTimeout(() => artView.style.display = 'none', 300);
+            }
+            if (desktopContainer) {
+                desktopContainer.classList.remove('hidden-tab');
+                desktopContainer.classList.add('in-mobile-overlay');
+            }
         }
     };
 
@@ -1670,20 +1731,20 @@
         if (!titleEl) return;
         const container = titleEl.parentElement;
         
-        // Reset first to get natural width
-        if (titleEl.dataset.duplicated === "true") {
-            titleEl.innerHTML = titleEl.dataset.originalText || titleEl.innerText;
-            titleEl.dataset.duplicated = "";
-        }
+        const originalText = titleEl.dataset.originalText || titleEl.textContent;
+        
+        // Reset to measure natural width
+        titleEl.classList.remove('marquee-animate');
+        titleEl.textContent = originalText;
+        titleEl.style.transform = 'translateX(0)';
+        titleEl.dataset.duplicated = "";
 
         if (titleEl.scrollWidth > container.offsetWidth) {
-            titleEl.dataset.originalText = titleEl.innerText;
-            titleEl.classList.add('marquee-animate');
+            titleEl.dataset.originalText = originalText;
             // Duplicate text for seamless loop
-            titleEl.innerHTML = `${titleEl.innerText} &nbsp;&nbsp;&nbsp;&nbsp; ${titleEl.innerText}`;
+            titleEl.innerHTML = `<span>${originalText}</span><span style="padding-left: 50px;">${originalText}</span>`;
+            titleEl.classList.add('marquee-animate');
             titleEl.dataset.duplicated = "true";
-        } else {
-            titleEl.classList.remove('marquee-animate');
         }
     };
 
@@ -1992,9 +2053,12 @@
 
         // Update Mobile UI
         const mobileTitle = document.getElementById('mobilePlayerTitle');
-        mobileTitle.textContent = title;
-        mobileTitle.dataset.duplicated = ""; 
-        mobileTitle.dataset.originalText = title; // Ensure new title is stored
+        if (mobileTitle) {
+            mobileTitle.textContent = title;
+            mobileTitle.dataset.originalText = title;
+            mobileTitle.dataset.duplicated = "";
+            mobileTitle.classList.remove('marquee-animate');
+        }
         document.getElementById('mobilePlayerArtist').textContent = artist;
         document.getElementById('mobilePlayerThumb').src = thumb;
         
@@ -2006,10 +2070,12 @@
                 section.classList.add('expanded');
                 if (icon) icon.classList.add('rotated');
             }
-        } else {
-            // Check marquee on mobile
-            setTimeout(() => window.checkMarquee(), 100);
         }
+
+        // Check marquee after a short delay to allow DOM to update
+        setTimeout(() => {
+            window.checkMarquee();
+        }, 100);
 
         // Direct source update to ensure iframe has the right video
         const iframe = document.getElementById('adfree-player');
