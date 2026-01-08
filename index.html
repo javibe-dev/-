@@ -1359,6 +1359,22 @@
     // No initialization needed for iframe-based Piped player.
 
     // --- SEARCH LOGIC (PIPED API) ---
+    // High-speed CORS bypass helper
+    async function fetchWithCORS(url, signal) {
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+        try {
+            // Try direct fetch first (fastest if CORS allows)
+            const directResponse = await fetch(url, { signal });
+            if (directResponse.ok) return await directResponse.json();
+            throw new Error("Direct failed");
+        } catch (err) {
+            // Fallback to proxy immediately
+            const proxyResponse = await fetch(proxyUrl, { signal });
+            if (!proxyResponse.ok) throw new Error("Proxy failed");
+            return await proxyResponse.json();
+        }
+    }
+
     window.searchMusic = async function(query) {
         if (!query) return;
         
@@ -1367,8 +1383,6 @@
         resultsEl.innerHTML = ''; 
         
         const btn = document.getElementById('musicSearchBtn');
-        const input = document.getElementById('musicSearchInput');
-        
         if (btn) {
             btn.disabled = true;
             btn.textContent = "Searching...";
@@ -1381,25 +1395,22 @@
             </div>
         `;
 
+        // Updated nodes with better uptime/CORS
         const nodes = [
-            'https://pipedapi.moomoo.me',
-            'https://api.piped.victr.me',
-            'https://pipedapi.mha.fi',
+            'https://pipedapi.kavin.rocks',
+            'https://pipedapi.tokhmi.xyz',
             'https://pipedapi.adminforge.de',
-            'https://pipedapi.astartes.nl',
-            'https://pipedapi.kavin.rocks'
+            'https://pipedapi.mha.fi',
+            'https://api-piped.mha.fi'
         ];
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased to 8s to give it a better chance
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s for reliability
 
         const fetchFromNode = async (baseUrl) => {
+            const searchUrl = `${baseUrl}/search?q=${encodeURIComponent(query)}&filter=videos`;
             try {
-                const response = await fetch(`${baseUrl}/search?q=${encodeURIComponent(query)}&filter=videos`, {
-                    signal: controller.signal
-                });
-                if (!response.ok) throw new Error("Node failed");
-                const data = await response.json();
+                const data = await fetchWithCORS(searchUrl, controller.signal);
                 if (!data.items || data.items.length === 0) throw new Error("No items");
                 
                 return data.items.slice(0, 20).map(item => ({
@@ -1416,12 +1427,12 @@
         try {
             const results = await Promise.any(nodes.map(fetchFromNode));
             clearTimeout(timeoutId);
-            displayResults(results);
+            window.displayResults(results);
         } catch (err) {
             console.error("JaVibe: Search failed", err);
             resultsEl.innerHTML = `
                 <div style="grid-column: 1/-1; text-align: center; padding: 2rem;">
-                    <p style="color: #fda4af; margin-bottom: 1rem;">Search failed or timed out. Nodes might be congested.</p>
+                    <p style="color: #fda4af; margin-bottom: 1rem;">All nodes are congested or blocked by CORS. Retrying with proxy...</p>
                     <button onclick="window.searchMusic('${query.replace(/'/g, "\\'")}')" class="primary-btn" style="width: auto; padding: 8px 20px;">Retry Now</button>
                 </div>
             `;
