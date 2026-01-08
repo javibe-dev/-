@@ -1353,18 +1353,27 @@
     window.onYouTubeIframeAPIReady = initYouTubePlayer;
 
     // Helper to fetch through multiple CORS proxies
-    async function fetchWithProxy(url, type = 'text') {
+    async function fetchWithProxy(url, type = 'text', method = 'GET', body = null) {
         const proxies = [
             `https://corsproxy.io/?${encodeURIComponent(url)}`,
             `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-            `https://thingproxy.freeboard.io/fetch/${url}`,
-            `https://api.codetabs.com/v1/proxy?quest=${url}`
+            `https://api.codetabs.com/v1/proxy?quest=${url}`,
+            `https://thingproxy.freeboard.io/fetch/${url}`
         ];
 
         for (const proxy of proxies) {
             try {
                 console.log(`JaVibe: Trying proxy ${proxy}`);
-                const response = await fetch(proxy, { method: 'GET', headers: { 'Accept': 'application/json, text/plain, */*' } });
+                const options = { 
+                    method, 
+                    headers: { 'Accept': 'application/json, text/plain, */*' } 
+                };
+                if (body) {
+                    options.headers['Content-Type'] = 'application/json';
+                    options.body = JSON.stringify(body);
+                }
+
+                const response = await fetch(proxy, options);
                 if (!response.ok) continue;
                 
                 if (proxy.includes('allorigins.win')) {
@@ -1372,7 +1381,7 @@
                     return data.contents;
                 }
                 
-                return await response.text();
+                return type === 'json' ? await response.json() : await response.text();
             } catch (err) {
                 console.warn(`JaVibe: Proxy ${proxy} failed`, err);
             }
@@ -1390,81 +1399,127 @@
         resultsEl.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
                 <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); width: 30px; height: 30px; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
-                <p>Finding the best streams...</p>
+                <p>Using yt-dlp logic to find the best streams...</p>
             </div>
         `;
 
-        // 1. Direct Link/ID Check
-        const ytIdMatch = query.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-        const directId = (ytIdMatch ? ytIdMatch[1] : (query.length === 11 && !query.includes(' ') ? query : null));
-        
-        if (directId) {
-            playYouTubeVideo(directId, "Direct Link", "YouTube", `https://img.youtube.com/vi/${directId}/hqdefault.jpg`);
-            btn.disabled = false;
-            btn.textContent = "Search Music";
-            return;
-        }
-
-        // 2. Primary Search: Scrape YouTube via Proxies
         try {
-            const searchUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`;
-            const html = await fetchWithProxy(searchUrl);
-
-            // Robust regex for ytInitialData or raw HTML
-            const regex = /"videoRenderer":\{"videoId":"([^"]+)","thumbnail":\{"thumbnails":\[\{"url":"([^"]+)"[^}]+\]\},"title":\{"runs":\[\{"text":"([^"]+)"\}\][^}]+\},"longBylineText":\{"runs":\[\{"text":"([^"]+)"/g;
-            let match;
-            const results = [];
+            // 1. Direct Link/ID Check (Immediate)
+            const ytIdMatch = query.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+            const directId = (ytIdMatch ? ytIdMatch[1] : (query.length === 11 && !query.includes(' ') ? query : null));
             
-            while ((match = regex.exec(html)) !== null && results.length < 20) {
-                results.push({
-                    videoId: match[1],
-                    thumb: match[2].split('?')[0],
-                    title: match[3].replace(/\\u0026/g, '&').replace(/\\"/g, '"'),
-                    author: match[4].replace(/\\u0026/g, '&')
-                });
-            }
-
-            if (results.length > 0) {
-                displayResults(results);
-                btn.disabled = false;
-                btn.textContent = "Search Music";
+            if (directId) {
+                playYouTubeVideo(directId, "Direct Link", "YouTube", `https://img.youtube.com/vi/${directId}/hqdefault.jpg`);
                 return;
             }
-        } catch (e) {
-            console.warn("JaVibe: Primary search failed, trying fallback...", e);
-        }
 
-        // 3. Fallback: Piped API
-        const pipedInstances = [
-            'https://pipedapi.kavin.rocks',
-            'https://piped-api.garudalinux.org',
-            'https://pipedapi.adminforge.de',
-            'https://pa.it-f.at'
-        ];
-
-        for (const instance of pipedInstances) {
+            // 2. Primary: YouTube Internal API (youtubei/v1/search) - What yt-dlp uses
             try {
-                const response = await fetch(`${instance}/search?q=${encodeURIComponent(query)}&filter=videos`);
-                const data = await response.json();
-                const items = data.items || [];
-                if (items.length > 0) {
-                    const results = items.map(item => ({
-                        videoId: item.url.split('v=')[1] || item.url.split('/').pop(),
-                        title: item.title,
-                        author: item.uploaderName,
-                        thumb: item.thumbnail
-                    }));
+                const searchUrl = 'https://www.youtube.com/youtubei/v1/search';
+                const payload = {
+                    context: {
+                        client: {
+                            clientName: "WEB",
+                            clientVersion: "2.20240313.05.00",
+                            hl: "en",
+                            gl: "US",
+                            utcOffsetMinutes: 0
+                        }
+                    },
+                    query: query
+                };
+
+                const data = await fetchWithProxy(searchUrl, 'json', 'POST', payload);
+                const contents = data?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents[0]?.itemSectionRenderer?.contents;
+                
+                if (contents && contents.length > 0) {
+                    const results = contents
+                        .filter(item => item.videoRenderer)
+                        .map(item => {
+                            const v = item.videoRenderer;
+                            return {
+                                videoId: v.videoId,
+                                title: v.title.runs[0].text,
+                                author: v.longBylineText?.runs[0]?.text || v.shortBylineText?.runs[0]?.text || "Unknown",
+                                thumb: v.thumbnail.thumbnails[0].url.split('?')[0]
+                            };
+                        });
+
+                    if (results.length > 0) {
+                        displayResults(results);
+                        return;
+                    }
+                }
+            } catch (e) {
+                console.warn("JaVibe: Internal API search failed, trying scraper fallback...", e);
+            }
+
+            // 3. Secondary: Scrape Fallback
+            try {
+                const scrapeUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`;
+                const html = await fetchWithProxy(scrapeUrl);
+                const regex = /"videoRenderer":\{"videoId":"([^"]+)","thumbnail":\{"thumbnails":\[\{"url":"([^"]+)"[^}]+\]\},"title":\{"runs":\[\{"text":"([^"]+)"\}\][^}]+\},"longBylineText":\{"runs":\[\{"text":"([^"]+)"/g;
+                let match;
+                const results = [];
+                while ((match = regex.exec(html)) !== null && results.length < 15) {
+                    results.push({
+                        videoId: match[1],
+                        thumb: match[2].split('?')[0],
+                        title: match[3].replace(/\\u0026/g, '&').replace(/\\"/g, '"'),
+                        author: match[4].replace(/\\u0026/g, '&')
+                    });
+                }
+                if (results.length > 0) {
                     displayResults(results);
-                    btn.disabled = false;
-                    btn.textContent = "Search Music";
                     return;
                 }
-            } catch (err) { continue; }
-        }
+            } catch (e) {
+                console.warn("JaVibe: Scraper fallback failed", e);
+            }
 
-        resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">No results found. Try a more specific search or paste a YouTube link.</p>`;
-        btn.disabled = false;
-        btn.textContent = "Search Music";
+            // 4. Tertiary: Piped/Invidious Fallback (Ultra-stable instances)
+            const fallbacks = [
+                'https://pipedapi.kavin.rocks',
+                'https://iv.ggtyler.dev',
+                'https://yewtu.be',
+                'https://invidious.lunar.icu'
+            ];
+
+            for (const base of fallbacks) {
+                try {
+                    const url = base.includes('piped') 
+                        ? `${base}/search?q=${encodeURIComponent(query)}&filter=videos`
+                        : `${base}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
+                    
+                    const res = await fetch(url);
+                    if (!res.ok) continue;
+                    const data = await res.json();
+                    const items = data.items || data;
+                    
+                    if (items && items.length > 0) {
+                        const results = items.slice(0, 15).map(item => ({
+                            videoId: item.videoId || (item.url ? item.url.split('v=')[1] : null),
+                            title: item.title,
+                            author: item.uploaderName || item.author,
+                            thumb: item.thumbnail || (item.videoThumbnails ? item.videoThumbnails[0].url : null)
+                        })).filter(r => r.videoId);
+
+                        if (results.length > 0) {
+                            displayResults(results);
+                            return;
+                        }
+                    }
+                } catch (err) { continue; }
+            }
+
+            resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">No results found. Try a different search term or paste a YouTube link.</p>`;
+        } catch (err) {
+            console.error("JaVibe: All search methods failed", err);
+            resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">All search providers failed. Please check your internet or try again later.</p>`;
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Search Music";
+        }
     }
 
     function displayResults(results) {
