@@ -8,7 +8,28 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://www.youtube.com/iframe_api"></script>
     <style>
+        /* Existing styles ... */
+        #ytPlayerContainer.in-mobile-overlay {
+            position: fixed !important;
+            top: 50% !important;
+            left: 50% !important;
+            transform: translate(-50%, -50%) scale(1) !important;
+            width: 90% !important;
+            max-width: 600px !important;
+            z-index: 2100 !important;
+            transition: all 0.3s cubic-bezier(0.32, 0.72, 0, 1) !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        #ytPlayerContainer.in-mobile-overlay.hidden-tab {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+    </style>
         :root {
             --primary: #6366f1;
             --primary-hover: #4f46e5;
@@ -770,7 +791,15 @@
             padding: 20px;
         }
 
-        .music-card {
+        #togglePlayerIcon {
+            transition: transform 0.4s ease;
+        }
+
+        #togglePlayerIcon.rotated {
+            transform: rotate(180deg);
+        }
+
+        #playerSection.mobile-video-mode {
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.05);
             border-radius: 16px;
@@ -790,180 +819,29 @@
             bottom: 0;
             background: #09090b;
             z-index: 2000;
-            display: none;
+            display: flex;
             flex-direction: column;
             transform: translateY(100%);
-            transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+            transition: transform 0.6s cubic-bezier(0.32, 0.72, 0, 1);
             padding: 20px;
             color: white;
             overflow: hidden;
+            visibility: hidden;
+            pointer-events: none;
+            opacity: 0;
         }
 
         #mobilePlayerOverlay.active {
-            display: flex;
+            visibility: visible;
+            pointer-events: auto;
             transform: translateY(0);
-        }
-
-        .mobile-player-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-            padding-top: 10px;
-        }
-
-        .mobile-player-tabs {
-            display: flex;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 30px;
-            padding: 4px;
-            gap: 4px;
-        }
-
-        .mobile-tab-btn {
-            padding: 8px 16px;
-            border-radius: 25px;
-            border: none;
-            background: transparent;
-            color: var(--text-muted);
-            font-size: 0.85rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .mobile-tab-btn.active {
-            background: rgba(255, 255, 255, 0.1);
-            color: white;
-        }
-
-        .mobile-player-content {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            gap: 30px;
-            width: 100%;
-        }
-
-        .mobile-art-container {
-            width: 85%;
-            aspect-ratio: 1/1;
-            border-radius: 20px;
-            overflow: hidden;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
-            background: #111;
-        }
-
-        .mobile-art-container img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-
-        .mobile-video-container {
-            width: 100%;
-            aspect-ratio: 16/9;
-            border-radius: 12px;
-            overflow: hidden;
-            display: none;
-            background: #000;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-        }
-
-        .mobile-video-container.active {
-            display: block;
-        }
-
-        .mobile-info-section {
-            width: 100%;
-            padding: 0 20px;
-            text-align: left;
-        }
-
-        .marquee-container {
-            overflow: hidden;
-            white-space: nowrap;
-            width: 100%;
-            margin-bottom: 5px;
-            mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
-        }
-
-        .marquee-text {
-            display: inline-block;
-            font-size: 1.4rem;
-            font-weight: 700;
-            padding-left: 10%;
-        }
-
-        .marquee-animate {
-            animation: marquee 10s linear infinite;
-        }
-
-        @keyframes marquee {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
-        }
-
-        .mobile-artist {
-            color: var(--text-muted);
-            font-size: 1rem;
-            margin: 0;
-            padding-left: 10%;
-        }
-
-        .mobile-controls-wrapper {
-            width: 100%;
-            margin-top: auto;
-            padding-bottom: 30px;
+            opacity: 1;
         }
 
         .mobile-progress-section {
             width: 100%;
             padding: 0 20px;
             margin-bottom: 25px;
-        }
-
-        .mobile-progress-bar-bg {
-            width: 100%;
-            height: 4px;
-            background: rgba(255, 255, 255, 0.1);
-            border-radius: 2px;
-            position: relative;
-        }
-
-        .mobile-progress-bar-fill {
-            height: 100%;
-            background: white;
-            border-radius: 2px;
-            width: 0%;
-        }
-
-        #mobilePlayerOverlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: #09090b;
-            z-index: 2000;
-            display: none;
-            flex-direction: column;
-            transform: translateY(100%);
-            transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
-            padding: 20px;
-            color: white;
-            overflow: hidden;
-        }
-
-        #mobilePlayerOverlay.active {
-            display: flex;
-            transform: translateY(0);
         }
 
         .mobile-player-header {
@@ -1008,6 +886,8 @@
             justify-content: center;
             align-items: center;
             gap: 40px;
+            position: relative;
+            width: 100%;
         }
 
         .mobile-art-container {
@@ -1017,25 +897,19 @@
             border-radius: 20px;
             overflow: hidden;
             box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+
+        .mobile-art-container.hidden {
+            opacity: 0;
+            visibility: hidden;
+            transform: scale(0.9);
         }
 
         .mobile-art-container img {
             width: 100%;
             height: 100%;
             object-fit: cover;
-        }
-
-        .mobile-video-container {
-            width: 100%;
-            aspect-ratio: 16/9;
-            border-radius: 12px;
-            overflow: hidden;
-            background: #000;
-            display: none;
-        }
-
-        .mobile-video-container.active {
-            display: block;
         }
 
         .mobile-info-section {
@@ -1136,9 +1010,12 @@
         }
 
         @media (max-width: 768px) {
-            #playerSection {
-                display: none !important;
-            }
+              #togglePlayerIcon {
+                  display: none !important;
+              }
+              #playerSection {
+                  display: none !important;
+              }
             #musicPlayerBar {
                  padding-bottom: env(safe-area-inset-bottom);
                  cursor: pointer;
@@ -1374,25 +1251,40 @@
                         <iframe id="adfree-player" style="width: 100%; height: 100%; border: none;" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
                     </div>
                 </div>
+
+                <!-- Desktop Progress Bar -->
+                <div style="width: 100%; height: 4px; background: rgba(255,255,255,0.1); cursor: pointer; position: relative;" id="desktopProgressContainer">
+                    <div id="progressBar" style="width: 0%; height: 100%; background: var(--primary); transition: width 0.1s linear;"></div>
+                </div>
                 
                 <div id="playerMetadata" style="padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;">
                         <div style="display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0;">
                             <img id="playerThumb" src="" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
                             <div style="min-width: 0;">
                                 <h4 id="playerTitle" style="margin: 0; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white;"></h4>
-                                <p id="playerArtist" style="margin: 0; font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></p>
+                                <div style="display: flex; align-items: center; gap: 8px;">
+                                    <p id="playerArtist" style="margin: 0; font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></p>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">•</span>
+                                    <span id="currentTime" style="font-size: 0.65rem; color: var(--text-muted);">0:00</span>
+                                    <span style="font-size: 0.65rem; color: var(--text-muted);">/</span>
+                                    <span id="duration" style="font-size: 0.65rem; color: var(--text-muted);">0:00</span>
+                                </div>
                             </div>
                         </div>
 
                         <!-- Controls & Volume -->
                         <div style="display: flex; align-items: center; gap: 20px;">
+                            <button id="desktopLoopBtn" onclick="window.toggleLoop()" class="icon-btn desktop-only-btn" style="color: white; font-size: 1rem;">
+                                <i class="fas fa-repeat"></i>
+                            </button>
                             <button id="desktopPlayBtn" onclick="window.togglePlayback()" class="icon-btn" style="color: white; font-size: 1.2rem;">
                                 <i class="fas fa-play"></i>
                             </button>
-                            <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 5px 12px; border-radius: 20px;">
+                            <div class="desktop-only-btn" style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 5px 12px; border-radius: 20px;">
                                 <i class="fas fa-volume-up" style="font-size: 0.8rem; color: var(--text-muted);"></i>
                                 <input type="range" id="volumeSlider" min="0" max="100" value="100" style="width: 80px; height: 4px; accent-color: var(--primary);">
                             </div>
+                            <button onclick="togglePlayer()" class="icon-btn desktop-only-btn" style="color: white; font-size: 1.2rem;"><i class="fas fa-chevron-up" id="togglePlayerIcon"></i></button>
                         </div>
                     </div>
             </div>
@@ -1438,9 +1330,6 @@
             <div id="mobileArtView" class="mobile-art-container">
                 <img id="mobilePlayerThumb" src="" alt="Album Art">
             </div>
-            <div id="mobileVideoView" class="mobile-video-container">
-                <!-- Video iframe will be moved here when in video mode -->
-            </div>
 
             <div class="mobile-info-section">
                 <div class="marquee-container">
@@ -1465,7 +1354,7 @@
                         <i class="fas fa-play"></i>
                     </button>
                     <button class="mobile-secondary-btn"><i class="fas fa-step-forward"></i></button>
-                    <button class="mobile-secondary-btn"><i class="fas fa-redo"></i></button>
+                    <button id="mobileLoopBtn" class="mobile-secondary-btn" onclick="toggleLoop()"><i class="fas fa-repeat"></i></button>
                 </div>
             </div>
         </div>
@@ -1724,13 +1613,37 @@
     // --- MOBILE PLAYER LOGIC ---
     window.toggleMobilePlayer = (show) => {
         const overlay = document.getElementById('mobilePlayerOverlay');
+        const desktopContainer = document.getElementById('ytPlayerContainer');
+
         if (show) {
             overlay.classList.add('active');
             document.body.style.overflow = 'hidden';
             window.checkMarquee();
+            
+            if (desktopContainer) {
+                desktopContainer.classList.add('in-mobile-overlay');
+                // Check current tab to see if it should be hidden
+                const videoBtn = document.getElementById('mobileTabVideo');
+                if (videoBtn && !videoBtn.classList.contains('active')) {
+                    desktopContainer.classList.add('hidden-tab');
+                } else {
+                    desktopContainer.classList.remove('hidden-tab');
+                }
+            }
         } else {
             overlay.classList.remove('active');
             document.body.style.overflow = '';
+            
+            // Wait for transition (0.6s) before removing classes from iframe container
+            // to avoid "snapping" back while the overlay is still visible
+            setTimeout(() => {
+                if (!overlay.classList.contains('active')) {
+                    if (desktopContainer) {
+                        desktopContainer.classList.remove('in-mobile-overlay');
+                        desktopContainer.classList.remove('hidden-tab');
+                    }
+                }
+            }, 600);
         }
     };
 
@@ -1738,75 +1651,86 @@
         const audioBtn = document.getElementById('mobileTabAudio');
         const videoBtn = document.getElementById('mobileTabVideo');
         const artView = document.getElementById('mobileArtView');
-        const videoView = document.getElementById('mobileVideoView');
-        const desktopIframe = document.getElementById('adfree-player');
+        const desktopContainer = document.getElementById('ytPlayerContainer');
 
         if (tab === 'audio') {
             audioBtn.classList.add('active');
             videoBtn.classList.remove('active');
-            artView.style.display = 'block';
-            videoView.classList.remove('active');
-            // Move iframe back to desktop container if needed, or just hide it
-            const desktopContainer = document.getElementById('ytPlayerContainer');
-            if (desktopIframe.parentElement !== desktopContainer) {
-                desktopContainer.appendChild(desktopIframe);
-            }
+            artView.classList.remove('hidden');
+            if (desktopContainer) desktopContainer.classList.add('hidden-tab');
         } else {
             videoBtn.classList.add('active');
             audioBtn.classList.remove('active');
-            artView.style.display = 'none';
-            videoView.classList.add('active');
-            // Move iframe to mobile video container
-            if (desktopIframe.parentElement !== videoView) {
-                videoView.appendChild(desktopIframe);
-            }
+            artView.classList.add('hidden');
+            if (desktopContainer) desktopContainer.classList.remove('hidden-tab');
         }
     };
 
     window.checkMarquee = () => {
         const titleEl = document.getElementById('mobilePlayerTitle');
+        if (!titleEl) return;
         const container = titleEl.parentElement;
+        
+        // Reset first to get natural width
+        if (titleEl.dataset.duplicated === "true") {
+            titleEl.innerHTML = titleEl.dataset.originalText || titleEl.innerText;
+            titleEl.dataset.duplicated = "";
+        }
+
         if (titleEl.scrollWidth > container.offsetWidth) {
+            titleEl.dataset.originalText = titleEl.innerText;
             titleEl.classList.add('marquee-animate');
             // Duplicate text for seamless loop
-            if (!titleEl.dataset.duplicated) {
-                titleEl.innerHTML = `${titleEl.innerText} &nbsp;&nbsp;&nbsp;&nbsp; ${titleEl.innerText}`;
-                titleEl.dataset.duplicated = "true";
-            }
+            titleEl.innerHTML = `${titleEl.innerText} &nbsp;&nbsp;&nbsp;&nbsp; ${titleEl.innerText}`;
+            titleEl.dataset.duplicated = "true";
         } else {
             titleEl.classList.remove('marquee-animate');
-            titleEl.dataset.duplicated = "";
         }
     };
 
     window.togglePlayback = () => {
-        const mobilePlayIcon = document.querySelector('#mobilePlayBtn i');
-        const desktopPlayIcon = document.querySelector('#desktopPlayBtn i');
-        const iframe = document.getElementById('adfree-player');
+        if (!player || typeof player.getPlayerState !== 'function') return;
 
-        if (isPlaying) {
-            iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
-            if (mobilePlayIcon) mobilePlayIcon.className = 'fas fa-play';
-            if (desktopPlayIcon) desktopPlayIcon.className = 'fas fa-play';
-            isPlaying = false;
+        const state = player.getPlayerState();
+        if (state === YT.PlayerState.PLAYING) {
+            player.pauseVideo();
         } else {
-            iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
-            if (mobilePlayIcon) mobilePlayIcon.className = 'fas fa-pause';
-            if (desktopPlayIcon) desktopPlayIcon.className = 'fas fa-pause';
-            isPlaying = true;
+            player.playVideo();
         }
     };
 
-    // Initialize player bar expansion click
+    function onPlayerStateChange(event) {
+        const mobilePlayBtn = document.getElementById('mobilePlayBtn');
+        const desktopPlayBtn = document.getElementById('desktopPlayBtn');
+        const mobileIcon = mobilePlayBtn ? mobilePlayBtn.querySelector('i') : null;
+        const desktopIcon = desktopPlayBtn ? desktopPlayBtn.querySelector('i') : null;
+
+        if (event.data === YT.PlayerState.PLAYING) {
+            isPlaying = true;
+            if (mobileIcon) mobileIcon.className = 'fas fa-pause';
+            if (desktopIcon) desktopIcon.className = 'fas fa-pause';
+            startProgressLoop();
+        } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+            isPlaying = false;
+            if (mobileIcon) mobileIcon.className = 'fas fa-play';
+            if (desktopIcon) desktopIcon.className = 'fas fa-play';
+            stopProgressLoop();
+            
+            if (event.data === YT.PlayerState.ENDED && isLooping) {
+                player.playVideo();
+            }
+        }
+    }
+
+    // Initialize mobile expansion click
     document.addEventListener('DOMContentLoaded', () => {
         const playerBar = document.getElementById('musicPlayerBar');
         playerBar.addEventListener('click', (e) => {
-            const isButton = e.target.closest('button') || e.target.closest('input');
-            if (!isButton) {
-                if (window.innerWidth <= 768) {
+            // Only trigger if clicking empty space or metadata on mobile
+            if (window.innerWidth <= 768) {
+                const isButton = e.target.closest('button') || e.target.closest('input');
+                if (!isButton) {
                     window.toggleMobilePlayer(true);
-                } else {
-                    window.togglePlayer();
                 }
             }
         });
@@ -1815,12 +1739,39 @@
     // --- PLAYER STATE ---
     let player = null; // YouTube Player
     let isPlaying = false;
+    let isLooping = false;
     let progressInterval;
+
+    window.onYouTubeIframeAPIReady = () => {
+        console.log("YouTube API Ready");
+    };
+
+    // --- PROGRESS BAR CLICK-TO-SEEK ---
+    document.addEventListener('DOMContentLoaded', () => {
+        const handleSeek = (e, container) => {
+            if (!player || typeof player.getDuration !== 'function') return;
+            const rect = container.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const pct = Math.max(0, Math.min(1, x / rect.width));
+            const targetTime = player.getDuration() * pct;
+            player.seekTo(targetTime, true);
+        };
+
+        const desktopBar = document.getElementById('desktopProgressContainer');
+        if (desktopBar) {
+            desktopBar.addEventListener('click', (e) => handleSeek(e, desktopBar));
+        }
+
+        const mobileBar = document.querySelector('.mobile-progress-container');
+        if (mobileBar) {
+            mobileBar.addEventListener('click', (e) => handleSeek(e, mobileBar));
+        }
+    });
 
     function startProgressLoop() {
         if (progressInterval) clearInterval(progressInterval);
         progressInterval = setInterval(() => {
-            if (player && player.getCurrentTime && isPlaying) {
+            if (player && player.getCurrentTime && typeof player.getCurrentTime === 'function' && isPlaying) {
                 updateProgressBar(player.getCurrentTime(), player.getDuration());
             }
         }, 500);
@@ -1833,28 +1784,37 @@
         }
     }
 
-    function updateProgressBar(current, total) {
-        const progressBar = document.getElementById('progressBar');
-        const mobileProgressBar = document.getElementById('mobileProgressBar');
-        const currentTimeEl = document.getElementById('currentTime');
-        const mobileCurrentTimeEl = document.getElementById('mobileCurrentTime');
-        const durationEl = document.getElementById('duration');
-        const mobileDurationEl = document.getElementById('mobileDuration');
-        
-        if (total > 0) {
-            const pct = (current / total) * 100;
-            if (progressBar) progressBar.style.width = `${pct}%`;
-            if (mobileProgressBar) mobileProgressBar.style.width = `${pct}%`;
-            
-            const formattedCurrent = formatTime(current);
-            const formattedTotal = formatTime(total);
+    window.toggleLoop = () => {
+        isLooping = !isLooping;
+        const mobileLoopBtn = document.getElementById('mobileLoopBtn');
+        const desktopLoopBtn = document.getElementById('desktopLoopBtn');
+        const color = isLooping ? 'var(--primary)' : 'white';
+        if (mobileLoopBtn) mobileLoopBtn.style.color = color;
+        if (desktopLoopBtn) desktopLoopBtn.style.color = color;
+    };
 
-            if (currentTimeEl) currentTimeEl.textContent = formattedCurrent;
-            if (mobileCurrentTimeEl) mobileCurrentTimeEl.textContent = formattedCurrent;
-            
-            if (durationEl) durationEl.textContent = formattedTotal;
-            if (mobileDurationEl) mobileDurationEl.textContent = formattedTotal;
-        }
+    function updateProgressBar(current, total) {
+        if (!total || total <= 0) return;
+        
+        const pct = (current / total) * 100;
+        const formattedCurrent = formatTime(current);
+        const formattedTotal = formatTime(total);
+
+        // Desktop
+        const progressBar = document.getElementById('progressBar');
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationEl = document.getElementById('duration');
+        if (progressBar) progressBar.style.width = `${pct}%`;
+        if (currentTimeEl) currentTimeEl.textContent = formattedCurrent;
+        if (durationEl) durationEl.textContent = formattedTotal;
+
+        // Mobile
+        const mobileProgressBar = document.getElementById('mobileProgressBar');
+        const mobileCurrentTimeEl = document.getElementById('mobileCurrentTime');
+        const mobileDurationEl = document.getElementById('mobileDuration');
+        if (mobileProgressBar) mobileProgressBar.style.width = `${pct}%`;
+        if (mobileCurrentTimeEl) mobileCurrentTimeEl.textContent = formattedCurrent;
+        if (mobileDurationEl) mobileDurationEl.textContent = formattedTotal;
     }
 
     function formatTime(seconds) {
@@ -2034,36 +1994,66 @@
         // Update Mobile UI
         const mobileTitle = document.getElementById('mobilePlayerTitle');
         mobileTitle.textContent = title;
-        mobileTitle.dataset.duplicated = ""; // Reset marquee duplication
+        mobileTitle.dataset.duplicated = ""; 
+        mobileTitle.dataset.originalText = title; // Ensure new title is stored
         document.getElementById('mobilePlayerArtist').textContent = artist;
         document.getElementById('mobilePlayerThumb').src = thumb;
-        
-        const playerIframe = document.getElementById('adfree-player');
         
         // Auto-expand player (desktop only)
         if (window.innerWidth > 768) {
             const section = document.getElementById('playerSection');
+            const icon = document.getElementById('togglePlayerIcon');
             if (section && !section.classList.contains('expanded')) {
                 section.classList.add('expanded');
+                if (icon) icon.classList.add('rotated');
             }
         } else {
             // Check marquee on mobile
-            window.checkMarquee();
+            setTimeout(() => window.checkMarquee(), 100);
         }
 
-        // Direct YouTube embed - most reliable
-        console.log(`JaVibe: Playing ${videoId} via Direct YouTube Embed`);
-        playerIframe.src = `https://youtube.com/embed/${videoId}?autoplay=1&vq=hd720&modestbranding=1&rel=0&enablejsapi=1`;
+        // Direct source update to ensure iframe has the right video
+        const iframe = document.getElementById('adfree-player');
+        const videoSrc = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&modestbranding=1&rel=0&vq=hd720`;
+        
+        if (iframe.src !== videoSrc) {
+            iframe.src = videoSrc;
+        }
+
+        // Initialize or Update YouTube Player API object
+        if (!player || typeof player.loadVideoById !== 'function') {
+            player = new YT.Player('adfree-player', {
+                events: {
+                    'onStateChange': onPlayerStateChange,
+                    'onReady': (e) => {
+                        e.target.playVideo();
+                        startProgressLoop();
+                    }
+                }
+            });
+        } else {
+            try {
+                player.loadVideoById(videoId);
+            } catch (err) {
+                console.warn("Re-initializing player due to error:", err);
+                player = new YT.Player('adfree-player', {
+                    videoId: videoId,
+                    events: {
+                        'onStateChange': onPlayerStateChange,
+                        'onReady': (e) => {
+                            e.target.playVideo();
+                            startProgressLoop();
+                        }
+                    }
+                });
+            }
+        }
         
         isPlaying = true;
         const mobilePlayIcon = document.querySelector('#mobilePlayBtn i');
         const desktopPlayIcon = document.querySelector('#desktopPlayBtn i');
         if (mobilePlayIcon) mobilePlayIcon.className = 'fas fa-pause';
         if (desktopPlayIcon) desktopPlayIcon.className = 'fas fa-pause';
-
-        // Clean up any existing switch buttons
-        const existingSwitch = document.getElementById('mirrorSwitchBtn');
-        if (existingSwitch) existingSwitch.remove();
     }
 
     // Mirror switching logic removed as requested for standard YouTube player reliability
@@ -2075,8 +2065,13 @@
 
     window.togglePlayer = () => {
         const playerSection = document.getElementById('playerSection');
+        const icon = document.getElementById('togglePlayerIcon');
+        
         if (playerSection) {
             playerSection.classList.toggle('expanded');
+        }
+        if (icon) {
+            icon.classList.toggle('rotated');
         }
     };
 
