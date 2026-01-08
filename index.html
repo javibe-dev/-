@@ -770,14 +770,6 @@
             padding: 20px;
         }
 
-        #togglePlayerIcon {
-            transition: transform 0.4s ease;
-        }
-
-        #togglePlayerIcon.rotated {
-            transform: rotate(180deg);
-        }
-
         .music-card {
             background: rgba(255, 255, 255, 0.03);
             border: 1px solid rgba(255, 255, 255, 0.05);
@@ -789,6 +781,372 @@
             flex-direction: column;
             gap: 12px;
         }
+        /* Mobile Full-screen Player Overlay */
+        #mobilePlayerOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #09090b;
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+            transform: translateY(100%);
+            transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+            padding: 20px;
+            color: white;
+            overflow: hidden;
+        }
+
+        #mobilePlayerOverlay.active {
+            display: flex;
+            transform: translateY(0);
+        }
+
+        .mobile-player-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-top: 10px;
+        }
+
+        .mobile-player-tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 30px;
+            padding: 4px;
+            gap: 4px;
+        }
+
+        .mobile-tab-btn {
+            padding: 8px 16px;
+            border-radius: 25px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mobile-tab-btn.active {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+        }
+
+        .mobile-player-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            gap: 30px;
+            width: 100%;
+        }
+
+        .mobile-art-container {
+            width: 85%;
+            aspect-ratio: 1/1;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+            background: #111;
+        }
+
+        .mobile-art-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .mobile-video-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            border-radius: 12px;
+            overflow: hidden;
+            display: none;
+            background: #000;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .mobile-video-container.active {
+            display: block;
+        }
+
+        .mobile-info-section {
+            width: 100%;
+            padding: 0 20px;
+            text-align: left;
+        }
+
+        .marquee-container {
+            overflow: hidden;
+            white-space: nowrap;
+            width: 100%;
+            margin-bottom: 5px;
+            mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+        }
+
+        .marquee-text {
+            display: inline-block;
+            font-size: 1.4rem;
+            font-weight: 700;
+            padding-left: 10%;
+        }
+
+        .marquee-animate {
+            animation: marquee 10s linear infinite;
+        }
+
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .mobile-artist {
+            color: var(--text-muted);
+            font-size: 1rem;
+            margin: 0;
+            padding-left: 10%;
+        }
+
+        .mobile-controls-wrapper {
+            width: 100%;
+            margin-top: auto;
+            padding-bottom: 30px;
+        }
+
+        .mobile-progress-section {
+            width: 100%;
+            padding: 0 20px;
+            margin-bottom: 25px;
+        }
+
+        .mobile-progress-bar-bg {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            position: relative;
+        }
+
+        .mobile-progress-bar-fill {
+            height: 100%;
+            background: white;
+            border-radius: 2px;
+            width: 0%;
+        }
+
+        #mobilePlayerOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #09090b;
+            z-index: 2000;
+            display: none;
+            flex-direction: column;
+            transform: translateY(100%);
+            transition: transform 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+            padding: 20px;
+            color: white;
+            overflow: hidden;
+        }
+
+        #mobilePlayerOverlay.active {
+            display: flex;
+            transform: translateY(0);
+        }
+
+        .mobile-player-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+        }
+
+        .mobile-player-tabs {
+            display: flex;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 4px;
+            border-radius: 100px;
+            gap: 4px;
+        }
+
+        .mobile-tab-btn {
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            padding: 8px 20px;
+            border-radius: 100px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .mobile-tab-btn.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .mobile-player-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 40px;
+        }
+
+        .mobile-art-container {
+            width: 100%;
+            aspect-ratio: 1/1;
+            max-width: 320px;
+            border-radius: 20px;
+            overflow: hidden;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+        }
+
+        .mobile-art-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .mobile-video-container {
+            width: 100%;
+            aspect-ratio: 16/9;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+            display: none;
+        }
+
+        .mobile-video-container.active {
+            display: block;
+        }
+
+        .mobile-info-section {
+            width: 100%;
+            text-align: left;
+            padding: 0 10px;
+        }
+
+        .marquee-container {
+            overflow: hidden;
+            white-space: nowrap;
+            width: 100%;
+            margin-bottom: 5px;
+            mask-image: linear-gradient(to right, transparent 0%, black 5%, black 95%, transparent 100%);
+        }
+
+        .marquee-text {
+            display: inline-block;
+            font-size: 1.4rem;
+            font-weight: 700;
+            padding-left: 10%;
+        }
+
+        .marquee-animate {
+            animation: marquee 10s linear infinite;
+        }
+
+        @keyframes marquee {
+            0% { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .mobile-artist {
+            color: var(--text-muted);
+            font-size: 1rem;
+            opacity: 0.8;
+        }
+
+        .mobile-controls-section {
+            width: 100%;
+            margin-top: 20px;
+        }
+
+        .mobile-progress-container {
+            width: 100%;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            position: relative;
+            margin-bottom: 10px;
+        }
+
+        .mobile-progress-bar {
+            height: 100%;
+            background: white;
+            border-radius: 2px;
+            width: 0%;
+        }
+
+        .mobile-time-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 10px;
+        }
+
+        .mobile-main-btns {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            padding: 0 20px;
+        }
+
+        .mobile-play-btn {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            background: white;
+            color: black;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.6rem;
+            cursor: pointer;
+            box-shadow: 0 4px 15px rgba(255, 255, 255, 0.2);
+        }
+
+        .mobile-secondary-btn {
+            background: transparent;
+            border: none;
+            color: white;
+            font-size: 1.4rem;
+            cursor: pointer;
+            opacity: 0.8;
+            padding: 10px;
+        }
+
+        @media (max-width: 768px) {
+            #playerSection {
+                display: none !important;
+            }
+            #musicPlayerBar {
+                 padding-bottom: env(safe-area-inset-bottom);
+                 cursor: pointer;
+             }
+             .desktop-only-btn {
+                 display: none !important;
+             }
+         }
     </style>
 </head>
 <body>
@@ -1028,11 +1386,13 @@
 
                         <!-- Controls & Volume -->
                         <div style="display: flex; align-items: center; gap: 20px;">
+                            <button id="desktopPlayBtn" onclick="window.togglePlayback()" class="icon-btn" style="color: white; font-size: 1.2rem;">
+                                <i class="fas fa-play"></i>
+                            </button>
                             <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 5px 12px; border-radius: 20px;">
                                 <i class="fas fa-volume-up" style="font-size: 0.8rem; color: var(--text-muted);"></i>
                                 <input type="range" id="volumeSlider" min="0" max="100" value="100" style="width: 80px; height: 4px; accent-color: var(--primary);">
                             </div>
-                            <button onclick="togglePlayer()" class="icon-btn" style="color: white; font-size: 1.2rem;"><i class="fas fa-chevron-up" id="togglePlayerIcon"></i></button>
                         </div>
                     </div>
             </div>
@@ -1055,7 +1415,63 @@
         </main>
     </div>
 
-<script type="module">
+    <!-- Mobile Full-screen Player -->
+    <div id="mobilePlayerOverlay">
+        <div class="mobile-player-header">
+            <button class="mobile-secondary-btn" onclick="toggleMobilePlayer(false)">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="mobile-player-tabs">
+                <button id="mobileTabAudio" class="mobile-tab-btn active" onclick="switchMobileTab('audio')">
+                    <i class="fas fa-headphones"></i> Audio
+                </button>
+                <button id="mobileTabVideo" class="mobile-tab-btn" onclick="switchMobileTab('video')">
+                    <i class="fas fa-play-circle"></i> Video
+                </button>
+            </div>
+            <button class="mobile-secondary-btn">
+                <i class="fas fa-ellipsis-v"></i>
+            </button>
+        </div>
+
+        <div class="mobile-player-content">
+            <div id="mobileArtView" class="mobile-art-container">
+                <img id="mobilePlayerThumb" src="" alt="Album Art">
+            </div>
+            <div id="mobileVideoView" class="mobile-video-container">
+                <!-- Video iframe will be moved here when in video mode -->
+            </div>
+
+            <div class="mobile-info-section">
+                <div class="marquee-container">
+                    <div id="mobilePlayerTitle" class="marquee-text">Song Title</div>
+                </div>
+                <div id="mobilePlayerArtist" class="mobile-artist">Artist Name</div>
+            </div>
+
+            <div class="mobile-controls-section">
+                <div class="mobile-progress-container">
+                    <div id="mobileProgressBar" class="mobile-progress-bar"></div>
+                </div>
+                <div class="mobile-time-info">
+                    <span id="mobileCurrentTime">0:00</span>
+                    <span id="mobileDuration">0:00</span>
+                </div>
+                
+                <div class="mobile-main-btns">
+                    <button class="mobile-secondary-btn"><i class="fas fa-random"></i></button>
+                    <button class="mobile-secondary-btn"><i class="fas fa-step-backward"></i></button>
+                    <button id="mobilePlayBtn" class="mobile-play-btn" onclick="togglePlayback()">
+                        <i class="fas fa-play"></i>
+                    </button>
+                    <button class="mobile-secondary-btn"><i class="fas fa-step-forward"></i></button>
+                    <button class="mobile-secondary-btn"><i class="fas fa-redo"></i></button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { 
         getAuth, 
@@ -1305,6 +1721,97 @@
         }
     };
 
+    // --- MOBILE PLAYER LOGIC ---
+    window.toggleMobilePlayer = (show) => {
+        const overlay = document.getElementById('mobilePlayerOverlay');
+        if (show) {
+            overlay.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            window.checkMarquee();
+        } else {
+            overlay.classList.remove('active');
+            document.body.style.overflow = '';
+        }
+    };
+
+    window.switchMobileTab = (tab) => {
+        const audioBtn = document.getElementById('mobileTabAudio');
+        const videoBtn = document.getElementById('mobileTabVideo');
+        const artView = document.getElementById('mobileArtView');
+        const videoView = document.getElementById('mobileVideoView');
+        const desktopIframe = document.getElementById('adfree-player');
+
+        if (tab === 'audio') {
+            audioBtn.classList.add('active');
+            videoBtn.classList.remove('active');
+            artView.style.display = 'block';
+            videoView.classList.remove('active');
+            // Move iframe back to desktop container if needed, or just hide it
+            const desktopContainer = document.getElementById('ytPlayerContainer');
+            if (desktopIframe.parentElement !== desktopContainer) {
+                desktopContainer.appendChild(desktopIframe);
+            }
+        } else {
+            videoBtn.classList.add('active');
+            audioBtn.classList.remove('active');
+            artView.style.display = 'none';
+            videoView.classList.add('active');
+            // Move iframe to mobile video container
+            if (desktopIframe.parentElement !== videoView) {
+                videoView.appendChild(desktopIframe);
+            }
+        }
+    };
+
+    window.checkMarquee = () => {
+        const titleEl = document.getElementById('mobilePlayerTitle');
+        const container = titleEl.parentElement;
+        if (titleEl.scrollWidth > container.offsetWidth) {
+            titleEl.classList.add('marquee-animate');
+            // Duplicate text for seamless loop
+            if (!titleEl.dataset.duplicated) {
+                titleEl.innerHTML = `${titleEl.innerText} &nbsp;&nbsp;&nbsp;&nbsp; ${titleEl.innerText}`;
+                titleEl.dataset.duplicated = "true";
+            }
+        } else {
+            titleEl.classList.remove('marquee-animate');
+            titleEl.dataset.duplicated = "";
+        }
+    };
+
+    window.togglePlayback = () => {
+        const mobilePlayIcon = document.querySelector('#mobilePlayBtn i');
+        const desktopPlayIcon = document.querySelector('#desktopPlayBtn i');
+        const iframe = document.getElementById('adfree-player');
+
+        if (isPlaying) {
+            iframe.contentWindow.postMessage('{"event":"command","func":"pauseVideo","args":""}', '*');
+            if (mobilePlayIcon) mobilePlayIcon.className = 'fas fa-play';
+            if (desktopPlayIcon) desktopPlayIcon.className = 'fas fa-play';
+            isPlaying = false;
+        } else {
+            iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}', '*');
+            if (mobilePlayIcon) mobilePlayIcon.className = 'fas fa-pause';
+            if (desktopPlayIcon) desktopPlayIcon.className = 'fas fa-pause';
+            isPlaying = true;
+        }
+    };
+
+    // Initialize player bar expansion click
+    document.addEventListener('DOMContentLoaded', () => {
+        const playerBar = document.getElementById('musicPlayerBar');
+        playerBar.addEventListener('click', (e) => {
+            const isButton = e.target.closest('button') || e.target.closest('input');
+            if (!isButton) {
+                if (window.innerWidth <= 768) {
+                    window.toggleMobilePlayer(true);
+                } else {
+                    window.togglePlayer();
+                }
+            }
+        });
+    });
+
     // --- PLAYER STATE ---
     let player = null; // YouTube Player
     let isPlaying = false;
@@ -1328,15 +1835,25 @@
 
     function updateProgressBar(current, total) {
         const progressBar = document.getElementById('progressBar');
+        const mobileProgressBar = document.getElementById('mobileProgressBar');
         const currentTimeEl = document.getElementById('currentTime');
+        const mobileCurrentTimeEl = document.getElementById('mobileCurrentTime');
         const durationEl = document.getElementById('duration');
+        const mobileDurationEl = document.getElementById('mobileDuration');
         
         if (total > 0) {
             const pct = (current / total) * 100;
-            progressBar.style.width = `${pct}%`;
+            if (progressBar) progressBar.style.width = `${pct}%`;
+            if (mobileProgressBar) mobileProgressBar.style.width = `${pct}%`;
             
-            currentTimeEl.textContent = formatTime(current);
-            durationEl.textContent = formatTime(total);
+            const formattedCurrent = formatTime(current);
+            const formattedTotal = formatTime(total);
+
+            if (currentTimeEl) currentTimeEl.textContent = formattedCurrent;
+            if (mobileCurrentTimeEl) mobileCurrentTimeEl.textContent = formattedCurrent;
+            
+            if (durationEl) durationEl.textContent = formattedTotal;
+            if (mobileDurationEl) mobileDurationEl.textContent = formattedTotal;
         }
     }
 
@@ -1508,23 +2025,41 @@
     window.playYouTubeVideo = async function(videoId, title, artist, thumb) {
         const playerBar = document.getElementById('musicPlayerBar');
         playerBar.style.display = 'flex';
+        
+        // Update Desktop UI
         document.getElementById('playerTitle').textContent = title;
         document.getElementById('playerArtist').textContent = artist;
         document.getElementById('playerThumb').src = thumb;
+
+        // Update Mobile UI
+        const mobileTitle = document.getElementById('mobilePlayerTitle');
+        mobileTitle.textContent = title;
+        mobileTitle.dataset.duplicated = ""; // Reset marquee duplication
+        document.getElementById('mobilePlayerArtist').textContent = artist;
+        document.getElementById('mobilePlayerThumb').src = thumb;
         
         const playerIframe = document.getElementById('adfree-player');
         
-        // Auto-expand player
-        const section = document.getElementById('playerSection');
-        const icon = document.getElementById('togglePlayerIcon');
-        if (!section.classList.contains('expanded')) {
-            section.classList.add('expanded');
-            icon.classList.add('rotated');
+        // Auto-expand player (desktop only)
+        if (window.innerWidth > 768) {
+            const section = document.getElementById('playerSection');
+            if (section && !section.classList.contains('expanded')) {
+                section.classList.add('expanded');
+            }
+        } else {
+            // Check marquee on mobile
+            window.checkMarquee();
         }
 
         // Direct YouTube embed - most reliable
         console.log(`JaVibe: Playing ${videoId} via Direct YouTube Embed`);
-        playerIframe.src = `https://youtube.com/embed/${videoId}?autoplay=1&vq=hd720&modestbranding=1&rel=0`;
+        playerIframe.src = `https://youtube.com/embed/${videoId}?autoplay=1&vq=hd720&modestbranding=1&rel=0&enablejsapi=1`;
+        
+        isPlaying = true;
+        const mobilePlayIcon = document.querySelector('#mobilePlayBtn i');
+        const desktopPlayIcon = document.querySelector('#desktopPlayBtn i');
+        if (mobilePlayIcon) mobilePlayIcon.className = 'fas fa-pause';
+        if (desktopPlayIcon) desktopPlayIcon.className = 'fas fa-pause';
 
         // Clean up any existing switch buttons
         const existingSwitch = document.getElementById('mirrorSwitchBtn');
@@ -1540,10 +2075,9 @@
 
     window.togglePlayer = () => {
         const playerSection = document.getElementById('playerSection');
-        const icon = document.getElementById('togglePlayerIcon');
-        
-        playerSection.classList.toggle('expanded');
-        icon.classList.toggle('rotated');
+        if (playerSection) {
+            playerSection.classList.toggle('expanded');
+        }
     };
 
     const searchBtn = document.getElementById('musicSearchBtn');
