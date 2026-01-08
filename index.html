@@ -970,15 +970,23 @@
                 </div>
                 
                 <div id="playerMetadata" style="padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;">
-                    <div style="display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0;">
-                        <img id="playerThumb" src="" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
-                        <div style="min-width: 0;">
-                            <h4 id="playerTitle" style="margin: 0; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white;"></h4>
-                            <p id="playerArtist" style="margin: 0; font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></p>
+                        <div style="display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0;">
+                            <img id="playerThumb" src="" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
+                            <div style="min-width: 0;">
+                                <h4 id="playerTitle" style="margin: 0; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white;"></h4>
+                                <p id="playerArtist" style="margin: 0; font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></p>
+                            </div>
+                        </div>
+
+                        <!-- Controls & Volume -->
+                        <div style="display: flex; align-items: center; gap: 20px;">
+                            <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 5px 12px; border-radius: 20px;">
+                                <i class="fas fa-volume-up" style="font-size: 0.8rem; color: var(--text-muted);"></i>
+                                <input type="range" id="volumeSlider" min="0" max="100" value="100" style="width: 80px; height: 4px; accent-color: var(--primary);">
+                            </div>
+                            <button onclick="togglePlayer()" class="icon-btn" style="color: white; font-size: 1.2rem;"><i class="fas fa-chevron-up" id="togglePlayerIcon"></i></button>
                         </div>
                     </div>
-                    <button onclick="togglePlayer()" class="icon-btn" style="color: white; font-size: 1.2rem;"><i class="fas fa-chevron-up" id="togglePlayerIcon"></i></button>
-                </div>
             </div>
 
             <div id="profileSection" style="display: none;">
@@ -1326,70 +1334,74 @@
         resultsEl.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
                 <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); width: 30px; height: 30px; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
-                <p>Searching via Scraper (No Quota)...</p>
+                <p>Searching YouTube (No-API Mode)...</p>
             </div>
         `;
 
         try {
-            // Using a public Invidious instance for search to bypass YouTube API Quotas
-            // This does not require an API Key.
-            const response = await fetch(`https://inv.tux.rs/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
+            // Using a more reliable CORS proxy + YouTube search scrape
+            // We'll try multiple sources
+            const searchUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&pbj=1`)}`;
+            const response = await fetch(searchUrl);
             const data = await response.json();
-            
-            if (!Array.isArray(data)) throw new Error("Invalid response from search provider.");
-            
-            resultsEl.innerHTML = '';
-            data.forEach(item => {
-                const videoId = item.videoId;
-                const title = item.title;
-                const thumb = item.videoThumbnails ? item.videoThumbnails.find(t => t.quality === 'high').url : `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                const channel = item.author;
+            const html = data.contents;
 
+            // Simple regex-based extraction for YouTube search results (ytsearch style)
+            const regex = /"videoRenderer":\{"videoId":"([^"]+)","thumbnail":\{"thumbnails":\[\{"url":"([^"]+)"[^}]+\]\},"title":\{"runs":\[\{"text":"([^"]+)"\}\][^}]+\},"longBylineText":\{"runs":\[\{"text":"([^"]+)"/g;
+            let match;
+            const results = [];
+            
+            while ((match = regex.exec(html)) !== null && results.length < 20) {
+                results.push({
+                    videoId: match[1],
+                    thumb: match[2].split('?')[0],
+                    title: match[3].replace(/\\u0026/g, '&'),
+                    author: match[4]
+                });
+            }
+
+            if (results.length === 0) throw new Error("Scraper returned no results.");
+
+            resultsEl.innerHTML = '';
+            results.forEach(item => {
                 const card = document.createElement('div');
                 card.className = 'music-card';
-                card.onclick = () => playYouTubeVideo(videoId, title, channel, thumb);
+                card.onclick = () => playYouTubeVideo(item.videoId, item.title, item.author, item.thumb);
                 card.innerHTML = `
-                    <img src="${thumb}" alt="${title}">
+                    <img src="${item.thumb}" alt="${item.title}">
                     <div class="music-card-content">
-                        <h5>${title}</h5>
-                        <p>${channel}</p>
+                        <h5>${item.title}</h5>
+                        <p>${item.author}</p>
                     </div>
                 `;
                 resultsEl.appendChild(card);
             });
 
-            if (data.length === 0) {
-                resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem;">No results found.</p>`;
-            }
         } catch (error) {
-            console.error("Search Error:", error);
-            resultsEl.innerHTML = `
-                <div style="grid-column: 1/-1; text-align: center; padding: 2rem;">
-                    <p style="color: #fda4af; margin-bottom: 10px;">Search Provider Error: ${error.message}</p>
-                    <p style="font-size: 0.8rem; color: var(--text-muted);">Trying fallback method...</p>
-                </div>
-            `;
-            // Fallback to a secondary instance if the first one fails
+            console.error("Scraper Error:", error);
+            // Fallback to Invidious API with a proxy if direct scrape fails
             try {
-                const fbResponse = await fetch(`https://invidious.sethforprivacy.com/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
-                const fbData = await fbResponse.json();
-                // ... same rendering logic could be duplicated or abstracted
-                if (Array.isArray(fbData)) {
-                    resultsEl.innerHTML = '';
-                    fbData.forEach(item => {
-                        const videoId = item.videoId;
-                        const title = item.title;
-                        const thumb = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
-                        const channel = item.author;
-                        const card = document.createElement('div');
-                        card.className = 'music-card';
-                        card.onclick = () => playYouTubeVideo(videoId, title, channel, thumb);
-                        card.innerHTML = `<img src="${thumb}"> <div class="music-card-content"><h5>${title}</h5><p>${channel}</p></div>`;
-                        resultsEl.appendChild(card);
-                    });
-                }
+                const invidiousUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://invidious.snopyta.org/api/v1/search?q=${encodeURIComponent(query)}&type=video`)}`;
+                const response = await fetch(invidiousUrl);
+                const data = await response.json();
+                const items = JSON.parse(data.contents);
+                
+                resultsEl.innerHTML = '';
+                items.forEach(item => {
+                    const thumb = `https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg`;
+                    const card = document.createElement('div');
+                    card.className = 'music-card';
+                    card.onclick = () => playYouTubeVideo(item.videoId, item.title, item.author, thumb);
+                    card.innerHTML = `<img src="${thumb}"> <div class="music-card-content"><h5>${item.title}</h5><p>${item.author}</p></div>`;
+                    resultsEl.appendChild(card);
+                });
             } catch (e) {
-                resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">All search providers failed. Please check your internet or try again later.</p>`;
+                resultsEl.innerHTML = `
+                    <div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">
+                        <p>Search failed. Your browser/network might be blocking the CORS proxy.</p>
+                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">Error: ${e.message}</p>
+                    </div>
+                `;
             }
         } finally {
             btn.disabled = false;
@@ -1443,9 +1455,12 @@
     document.getElementById('musicSearchBtn').onclick = () => searchMusic(document.getElementById('musicSearchInput').value);
     document.getElementById('musicSearchInput').onkeypress = (e) => { if (e.key === 'Enter') searchMusic(e.target.value); };
 
-    document.getElementById('volumeSlider').addEventListener('input', (e) => {
-        if (player && player.setVolume) player.setVolume(e.target.value);
-    });
+    const volumeSlider = document.getElementById('volumeSlider');
+    if (volumeSlider) {
+        volumeSlider.addEventListener('input', (e) => {
+            if (player && player.setVolume) player.setVolume(e.target.value);
+        });
+    }
 
     // --- COOKIE MANAGEMENT ---
     const saveCookiesBtn = document.getElementById('saveCookiesBtn');
