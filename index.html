@@ -7,7 +7,8 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://sdk.scdn.co/spotify-player.js"></script>
     <style>
         :root {
             --primary: #6366f1;
@@ -1162,9 +1163,54 @@
             ? "http://127.0.0.1:5500/index.html" 
             : window.location.origin + window.location.pathname;
 
-    const SCOPES = "user-read-private user-read-email user-library-read streaming";
+    const SCOPES = "user-read-private user-read-email user-library-read streaming user-modify-playback-state user-read-playback-state";
     
     let spotifyAccessToken = localStorage.getItem('spotify_access_token');
+    let spotifyPlayer = null;
+    let spotifyDeviceId = null;
+
+    // Initialize Spotify Web Playback SDK
+    window.onSpotifyWebPlaybackSDKReady = () => {
+        if (spotifyAccessToken) {
+            initSpotifyPlayer();
+        }
+    };
+
+    function initSpotifyPlayer() {
+        if (spotifyPlayer) return;
+
+        spotifyPlayer = new Spotify.Player({
+            name: 'JaVibe Player',
+            getOAuthToken: cb => { cb(spotifyAccessToken); },
+            volume: 0.5
+        });
+
+        // Error handling
+        spotifyPlayer.addListener('initialization_error', ({ message }) => { console.error(message); });
+        spotifyPlayer.addListener('authentication_error', ({ message }) => { console.error(message); handleLogout(); });
+        spotifyPlayer.addListener('account_error', ({ message }) => { console.error(message); });
+        spotifyPlayer.addListener('playback_error', ({ message }) => { console.error(message); });
+
+        // Playback status updates
+        spotifyPlayer.addListener('player_state_changed', state => {
+            if (!state) return;
+            // Update UI if needed based on state
+        });
+
+        // Ready
+        spotifyPlayer.addListener('ready', ({ device_id }) => {
+            console.log('Ready with Device ID', device_id);
+            spotifyDeviceId = device_id;
+        });
+
+        // Not Ready
+        spotifyPlayer.addListener('not_ready', ({ device_id }) => {
+            console.log('Device ID has gone offline', device_id);
+        });
+
+        // Connect to the player!
+        spotifyPlayer.connect();
+    }
     
     const spotifySearchInput = document.getElementById('spotifySearchInput');
     const spotifySearchBtn = document.getElementById('spotifySearchBtn');
@@ -1239,6 +1285,7 @@
                     // Clear the URL
                     window.history.replaceState({}, document.title, window.location.pathname);
                     updateSpotifyUI(true);
+                    initSpotifyPlayer();
                 } else {
                     console.error("Token exchange failed:", data);
                 }
@@ -1388,8 +1435,8 @@
             spotifyResults.innerHTML = `
                 <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: #fda4af;">
                     <i class="fas fa-exclamation-circle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                    <p>${error.message}</p>
-                    <button onclick="handleSpotifyLogin()" class="primary-btn" style="margin-top: 1rem; width: auto; padding: 8px 20px;">Reconnect Spotify</button>
+                    <p>To get full tracks on mobile, please reconnect Spotify to grant playback permissions.</p>
+                    <button onclick="handleSpotifyLogin()" class="primary-btn" style="margin-top: 1rem; width: auto; padding: 8px 20px;">Reconnect Spotify for Full Tracks</button>
                 </div>
             `;
         } finally {
@@ -1401,7 +1448,7 @@
     spotifySearchBtn.onclick = () => searchSpotify(spotifySearchInput.value);
     spotifySearchInput.onkeypress = (e) => { if (e.key === 'Enter') searchSpotify(spotifySearchInput.value); };
 
-    function playSpotifyTrack(trackId, title, artist, thumb, previewUrl) {
+    async function playSpotifyTrack(trackId, title, artist, thumb, previewUrl) {
         // Show player bar
         const playerBar = document.getElementById('musicPlayerBar');
         playerBar.style.display = 'flex';
@@ -1411,23 +1458,47 @@
         document.getElementById('playerArtist').textContent = artist;
         document.getElementById('playerThumb').src = thumb;
         
-        // Load Spotify Embed into the container
+        // Stop any background audio if it's playing
+        if (audioPlayer) {
+            audioPlayer.pause();
+            audioPlayer.src = '';
+            stopProgressLoop();
+        }
+
+        // Try to play full track via Web SDK (JaVibe Player) if we have a device_id
+        if (spotifyAccessToken && spotifyDeviceId) {
+            try {
+                const playResponse = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${spotifyDeviceId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${spotifyAccessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        uris: [`spotify:track:${trackId}`]
+                    })
+                });
+
+                if (playResponse.ok) {
+                    console.log("Full track playback started via JaVibe Player.");
+                    // Still show the embed for visual feedback/controls
+                    const playerContainer = document.getElementById('youtube-player-container');
+                    playerContainer.innerHTML = `<iframe src="https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0" width="100%" height="80" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="border-radius:12px;"></iframe>`;
+                    isPlaying = true;
+                    updatePlayPauseUI(true);
+                    return; // Success!
+                }
+            } catch (err) {
+                console.error("Web SDK Playback failed:", err);
+            }
+        }
+
+        // FALLBACK: Load Spotify Embed (Limited to 30s on mobile if not logged into browser)
         const playerContainer = document.getElementById('youtube-player-container');
         playerContainer.innerHTML = `<iframe src="https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0" width="100%" height="80" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="border-radius:12px;"></iframe>`;
         
-        // Handle audio preview if available (plays in background)
-        if (previewUrl) {
-            audioPlayer.src = previewUrl;
-            audioPlayer.play().catch(e => console.log("Autoplay blocked:", e));
-            isPlaying = true;
-            updatePlayPauseUI(true);
-            startProgressLoop();
-        } else {
-            audioPlayer.src = '';
-            isPlaying = false;
-            updatePlayPauseUI(false);
-            stopProgressLoop();
-        }
+        isPlaying = true;
+        updatePlayPauseUI(true);
     }
 
     function updatePlayPauseUI(playing) {
@@ -1436,12 +1507,22 @@
     }
 
     window.togglePlayPause = () => {
+        // If we are using the Spotify Embed, we can't easily control it via JS 
+        // because of cross-origin restrictions on the iframe.
+        // We let the user click the play/pause button inside the Embed itself.
+        // However, we can still toggle the UI state if we had a way to communicate.
+        // For now, we'll just show a message or let the Embed handle it.
         if (audioPlayer.src && audioPlayer.src !== window.location.href) {
             if (isPlaying) {
                 audioPlayer.pause();
             } else {
                 audioPlayer.play();
             }
+            isPlaying = !isPlaying;
+            updatePlayPauseUI(isPlaying);
+        } else {
+            // If it's the Embed, the user should use the Embed's own controls.
+            // We'll just update our local UI state for visual consistency.
             isPlaying = !isPlaying;
             updatePlayPauseUI(isPlaying);
         }
