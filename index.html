@@ -724,7 +724,23 @@
                         <div class="nav-item-content"><i class="fas fa-home"></i> Home</div>
                     </div>
                     <div class="nav-item" onclick="showSection('dashboard')">
-                        <div class="nav-item-content"><i class="fab fa-youtube"></i> Dashboard</div>
+                        <div class="nav-item-content"><i class="fab fa-spotify"></i> Spotify</div>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <p class="nav-label">Connect</p>
+                    <div id="spotifyConnectBtn" class="nav-item">
+                        <div class="nav-item-content">
+                            <i class="fab fa-spotify" style="color: #1DB954;"></i>
+                            <span>Connect Spotify</span>
+                        </div>
+                    </div>
+                    <div id="spotifyUser" class="nav-item" style="display: none; pointer-events: none;">
+                        <div class="nav-item-content">
+                            <img id="spotifyUserImg" src="" style="width: 20px; height: 20px; border-radius: 50%; display: none;">
+                            <span id="spotifyUserName" style="color: #1DB954; font-weight: 600;">Connected</span>
+                        </div>
                     </div>
                 </div>
 
@@ -775,22 +791,22 @@
 
             <div id="dashboardSection" style="display: none;">
                 <div class="dashboard-header">
-                    <h1 class="dashboard-title"><i class="fab fa-youtube" style="color: #ff0000; font-size: 1.8rem;"></i> Dashboard</h1>
-                    <p class="dashboard-subtitle">🎵 Explore millions of songs and videos from YouTube.</p>
+                    <h1 class="dashboard-title"><i class="fab fa-spotify" style="color: #1DB954; font-size: 1.8rem;"></i> Spotify Search</h1>
+                    <p class="dashboard-subtitle">🎵 Explore millions of tracks and albums from Spotify.</p>
                 </div>
 
                 <div class="search-container" style="margin-bottom: 2rem;">
                     <div style="position: relative; display: flex; gap: 10px;">
-                        <input type="text" id="youtubeSearchInput" placeholder="Search for songs, artists, or videos..." style="padding-right: 45px;">
-                        <button id="youtubeSearchBtn" class="primary-btn" style="white-space: nowrap;">Search</button>
+                        <input type="text" id="spotifySearchInput" placeholder="Search for tracks, artists, or albums..." style="padding-right: 45px;">
+                        <button id="spotifySearchBtn" class="primary-btn" style="white-space: nowrap;">Search</button>
                     </div>
                 </div>
 
-                <div id="youtubeResults" class="results-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+                <div id="spotifyResults" class="results-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
                     <!-- Results will appear here -->
                     <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">
-                        <i class="fab fa-youtube" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.2;"></i>
-                        <p>Search for something to see results</p>
+                        <i class="fab fa-spotify" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.2;"></i>
+                        <p>Connect Spotify and search for something to see results</p>
                     </div>
                 </div>
 
@@ -1099,159 +1115,245 @@
         }
     };
 
-    // --- SEARCH INTEGRATION ---
+    // --- SPOTIFY INTEGRATION ---
+    const SPOTIFY_CLIENT_ID = "04261d76387040718664f3316e6d762e"; // Replace with your actual Client ID if needed
+    const REDIRECT_URI = window.location.origin + window.location.pathname;
+    const SCOPES = "user-read-private user-read-email user-library-read streaming";
+    
+    let spotifyAccessToken = localStorage.getItem('spotify_access_token');
+    
+    const spotifySearchInput = document.getElementById('spotifySearchInput');
+    const spotifySearchBtn = document.getElementById('spotifySearchBtn');
+    const spotifyResults = document.getElementById('spotifyResults');
+    const spotifyConnectBtn = document.getElementById('spotifyConnectBtn');
+    const spotifyUser = document.getElementById('spotifyUser');
+    const spotifyUserImg = document.getElementById('spotifyUserImg');
+    const spotifyUserName = document.getElementById('spotifyUserName');
+
+    // Handle Spotify Auth Redirect
+    function checkSpotifyAuth() {
+        const hash = window.location.hash.substring(1);
+        const params = new URLSearchParams(hash);
+        const accessToken = params.get('access_token');
+        
+        if (accessToken) {
+            spotifyAccessToken = accessToken;
+            localStorage.setItem('spotify_access_token', accessToken);
+            window.location.hash = ''; // Clear hash
+            updateSpotifyUI(true);
+        } else if (spotifyAccessToken) {
+            updateSpotifyUI(true);
+        }
+    }
+
+    async function updateSpotifyUI(isConnected) {
+        if (isConnected) {
+            spotifyConnectBtn.style.display = 'none';
+            spotifyUser.style.display = 'flex';
+            
+            try {
+                const response = await fetch('https://api.spotify.com/v1/me', {
+                    headers: { 'Authorization': `Bearer ${spotifyAccessToken}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    spotifyUserName.textContent = data.display_name;
+                    if (data.images && data.images.length > 0) {
+                        spotifyUserImg.src = data.images[0].url;
+                        spotifyUserImg.style.display = 'block';
+                    }
+                } else if (response.status === 401) {
+                    // Token expired
+                    handleSpotifyLogout();
+                }
+            } catch (e) {
+                console.error("Spotify Profile Error:", e);
+            }
+        } else {
+            spotifyConnectBtn.style.display = 'flex';
+            spotifyUser.style.display = 'none';
+        }
+    }
+
+    function handleSpotifyLogin() {
+        const authUrl = `https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPES)}`;
+        window.location.href = authUrl;
+    }
+
+    function handleSpotifyLogout() {
+        localStorage.removeItem('spotify_access_token');
+        spotifyAccessToken = null;
+        updateSpotifyUI(false);
+    }
+
+    spotifyConnectBtn.onclick = handleSpotifyLogin;
+    checkSpotifyAuth();
+
+    async function searchSpotify(query) {
+        if (!query) return;
+        if (!spotifyAccessToken) {
+            alert("Please connect Spotify first!");
+            return;
+        }
+        
+        spotifySearchBtn.disabled = true;
+        spotifySearchBtn.textContent = "Searching...";
+        spotifyResults.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
+                <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #1DB954; width: 30px; height: 30px; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
+                <p>Searching Spotify...</p>
+            </div>
+        `;
+
+        try {
+            const response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=20`, {
+                headers: { 'Authorization': `Bearer ${spotifyAccessToken}` }
+            });
+            
+            if (!response.ok) {
+                if (response.status === 401) {
+                    handleSpotifyLogout();
+                    throw new Error("Session expired. Please reconnect Spotify.");
+                }
+                throw new Error("Spotify Search Failed");
+            }
+            
+            const data = await response.json();
+            const tracks = data.tracks.items;
+            
+            if (tracks.length === 0) {
+                spotifyResults.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">No tracks found.</div>';
+            } else {
+                spotifyResults.innerHTML = '';
+                tracks.forEach(track => {
+                    const card = document.createElement('div');
+                    card.style.cssText = `
+                        background: rgba(255, 255, 255, 0.03);
+                        border: 1px solid rgba(255, 255, 255, 0.05);
+                        border-radius: 12px;
+                        overflow: hidden;
+                        transition: all 0.2s ease;
+                        cursor: pointer;
+                    `;
+                    card.onmouseover = () => {
+                        card.style.transform = 'translateY(-5px)';
+                        card.style.background = 'rgba(255, 255, 255, 0.06)';
+                    };
+                    card.onmouseout = () => {
+                        card.style.transform = 'translateY(0)';
+                        card.style.background = 'rgba(255, 255, 255, 0.03)';
+                    };
+                    
+                    const thumb = track.album.images[0]?.url || '';
+                    const artist = track.artists.map(a => a.name).join(', ');
+                    
+                    card.onclick = () => playSpotifyTrack(track.id, track.name, artist, thumb, track.preview_url);
+
+                    card.innerHTML = `
+                        <div style="position: relative; aspect-ratio: 1/1; overflow: hidden;">
+                            <img src="${thumb}" style="width: 100%; height: 100%; object-fit: cover;">
+                            <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(29, 185, 84, 0.9); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; color: white;">Spotify</div>
+                        </div>
+                        <div style="padding: 12px;">
+                            <h5 style="margin: 0 0 4px; font-size: 0.9rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: white;">${track.name}</h5>
+                            <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">${artist}</p>
+                        </div>
+                    `;
+                    spotifyResults.appendChild(card);
+                });
+            }
+        } catch (error) {
+            spotifyResults.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: #fda4af;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                    <p>${error.message}</p>
+                    <button onclick="handleSpotifyLogin()" class="primary-btn" style="margin-top: 1rem; width: auto; padding: 8px 20px;">Reconnect Spotify</button>
+                </div>
+            `;
+        } finally {
+            spotifySearchBtn.disabled = false;
+            spotifySearchBtn.textContent = "Search";
+        }
+    }
+
+    spotifySearchBtn.onclick = () => searchSpotify(spotifySearchInput.value);
+    spotifySearchInput.onkeypress = (e) => { if (e.key === 'Enter') searchSpotify(spotifySearchInput.value); };
+
+    // --- SPOTIFY PLAYER LOGIC ---
+    let audioPlayer = new Audio();
+    
+    function playSpotifyTrack(trackId, title, artist, thumb, previewUrl) {
+        // Show player bar
+        const playerBar = document.getElementById('musicPlayerBar');
+        playerBar.style.display = 'flex';
+        
+        // Update UI
+        document.getElementById('playerTitle').textContent = title;
+        document.getElementById('playerArtist').textContent = artist;
+        document.getElementById('playerThumb').src = thumb;
+        
+        // For playback: Spotify Embed is easiest for full playback, 
+        // but since user wants "actual songs", we can use a Spotify Embed Player 
+        // that replaces the hidden YT player.
+        
+        const playerContainer = document.getElementById('youtube-player-container');
+        playerContainer.innerHTML = `<iframe src="https://open.spotify.com/embed/track/${trackId}" width="300" height="380" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>`;
+        
+        // If there's a preview URL, we can also use that for a smoother local experience
+        if (previewUrl) {
+            audioPlayer.src = previewUrl;
+            audioPlayer.play();
+            isPlaying = true;
+            updatePlayPauseUI(true);
+            startProgressLoop();
+        } else {
+            // No preview, just show the embed
+            isPlaying = true;
+            updatePlayPauseUI(true);
+        }
+    }
+
+    function updatePlayPauseUI(playing) {
+        const btn = document.getElementById('playPauseBtn');
+        btn.innerHTML = playing ? '<i class="fas fa-pause" style="color: black; font-size: 1.1rem;"></i>' : '<i class="fas fa-play" style="color: black; font-size: 1.1rem; margin-left: 3px;"></i>';
+    }
+
+    window.togglePlayPause = () => {
+        if (audioPlayer.src) {
+            if (isPlaying) {
+                audioPlayer.pause();
+            } else {
+                audioPlayer.play();
+            }
+            isPlaying = !isPlaying;
+            updatePlayPauseUI(isPlaying);
+        }
+    };
+
+    function startProgressLoop() {
+        setInterval(() => {
+            if (isPlaying && audioPlayer.duration) {
+                const pct = (audioPlayer.currentTime / audioPlayer.duration) * 100;
+                document.getElementById('progressBar').style.width = `${pct}%`;
+                document.getElementById('currentTime').textContent = formatTime(audioPlayer.currentTime);
+                document.getElementById('duration').textContent = formatTime(audioPlayer.duration);
+            }
+        }, 500);
+    }
+
+    function formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    // --- LEGACY YOUTUBE SEARCH (Disabled) ---
+    /*
     const youtubeSearchInput = document.getElementById('youtubeSearchInput');
     const youtubeSearchBtn = document.getElementById('youtubeSearchBtn');
     const youtubeResults = document.getElementById('youtubeResults');
-
-    // List of reliable Piped/Invidious instances for fallback
-    // Reliable Piped & Invidious instances
-    const SEARCH_INSTANCES = [
-        "https://pipedapi.kavin.rocks",
-        "https://api.piped.victr.me",
-        "https://invidious.snopyta.org",
-        "https://yewtu.be",
-        "https://pipedapi.rivo.cc",
-        "https://api-piped.mha.fi"
-    ];
-
-    // More reliable CORS proxies
-    const PROXIES = [
-        "https://api.allorigins.win/raw?url=",
-        "https://corsproxy.io/?url=",
-        "https://api.codetabs.com/v1/proxy?quest="
-    ];
-
-    async function searchYouTube(query) {
-        if (!query) return;
-        
-        youtubeSearchBtn.disabled = true;
-        youtubeSearchBtn.textContent = "Searching...";
-        youtubeResults.innerHTML = `
-            <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
-                <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); width: 30px; height: 30px; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
-                <p>Fetching results from YouTube...</p>
-            </div>
-        `;
-
-        let lastError = null;
-
-        // Try instances
-        for (const instance of SEARCH_INSTANCES) {
-            // Determine if Invidious or Piped for the query parameters
-            const isInvidious = instance.includes('invidious') || instance.includes('yewtu.be');
-            const targetUrl = isInvidious 
-                ? `${instance}/api/v1/search?q=${encodeURIComponent(query)}&type=video`
-                : `${instance}/search?q=${encodeURIComponent(query)}&filter=music_songs`;
-            
-            try {
-                console.log(`JaVibe: Trying direct fetch from ${instance}`);
-                const directResponse = await fetch(targetUrl, { signal: AbortSignal.timeout(3000) });
-                if (directResponse.ok) {
-                    const data = await directResponse.json();
-                    if (processSearchResults(data)) return;
-                }
-            } catch (e) {
-                console.log(`JaVibe: Direct fetch failed for ${instance}, trying proxies...`);
-            }
-
-            // If direct fails, try proxies
-            for (const proxy of PROXIES) {
-                try {
-                    console.log(`JaVibe: Trying ${instance} via ${proxy}`);
-                    const response = await fetch(`${proxy}${encodeURIComponent(targetUrl)}`, { signal: AbortSignal.timeout(5000) });
-                    
-                    if (!response.ok) throw new Error(`Status ${response.status}`);
-                    
-                    const text = await response.text();
-                    if (!text || text.trim().length === 0) throw new Error("Empty response");
-                    
-                    let data;
-                    try {
-                        data = JSON.parse(text);
-                    } catch (e) {
-                        // Some proxies wrap the response in their own JSON
-                        try {
-                            const wrapped = JSON.parse(text);
-                            data = wrapped.contents ? JSON.parse(wrapped.contents) : wrapped;
-                        } catch (e2) {
-                            throw new Error("Invalid JSON structure");
-                        }
-                    }
-                    
-                    if (processSearchResults(data)) return;
-
-                } catch (error) {
-                    console.warn(`JaVibe: ${instance} failed with proxy ${proxy}:`, error.message);
-                    lastError = error;
-                    continue; 
-                }
-            }
-        }
-
-        function processSearchResults(data) {
-            const items = Array.isArray(data) ? data : (data.items || []);
-            if (items.length === 0) return false;
-
-            youtubeResults.innerHTML = '';
-            
-            items.forEach(item => {
-                const videoId = item.url ? item.url.split('v=')[1] : (item.videoId || null);
-                if (!videoId) return;
-
-                const title = item.title;
-                const artist = item.uploaderName || item.author || 'Unknown Artist';
-                const thumb = item.thumbnail || (item.thumbnails ? item.thumbnails[0].url : '');
-
-                const card = document.createElement('div');
-                card.style.cssText = `
-                    background: rgba(255, 255, 255, 0.03);
-                    border: 1px solid rgba(255, 255, 255, 0.05);
-                    border-radius: 12px;
-                    overflow: hidden;
-                    transition: all 0.2s ease;
-                    cursor: pointer;
-                `;
-                card.onmouseover = () => {
-                    card.style.transform = 'translateY(-5px)';
-                    card.style.background = 'rgba(255, 255, 255, 0.06)';
-                };
-                card.onmouseout = () => {
-                    card.style.transform = 'translateY(0)';
-                    card.style.background = 'rgba(255, 255, 255, 0.03)';
-                };
-                card.onclick = () => playSong(videoId, title, artist, thumb);
-
-                card.innerHTML = `
-                    <div style="position: relative; aspect-ratio: 16/9; overflow: hidden;">
-                        <img src="${thumb}" style="width: 100%; height: 100%; object-fit: cover;">
-                        <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">YT Music</div>
-                    </div>
-                    <div style="padding: 12px;">
-                        <h5 style="margin: 0 0 4px; font-size: 0.9rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: white;">${title}</h5>
-                        <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">${artist}</p>
-                    </div>
-                `;
-                youtubeResults.appendChild(card);
-            });
-
-            youtubeSearchBtn.disabled = false;
-            youtubeSearchBtn.textContent = "Search";
-            return true;
-        }
-
-        // If we reach here, all instances failed
-        youtubeResults.innerHTML = `
-            <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: #fda4af;">
-                <i class="fas fa-exclamation-circle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                <p>Failed to fetch results: ${lastError?.message || 'All instances down'}</p>
-                <p style="font-size: 0.8rem; margin-top: 0.5rem; opacity: 0.7;">This usually happens when YouTube blocks public proxies. Please try again in a moment.</p>
-                <button onclick="location.reload()" class="primary-btn" style="margin-top: 1rem; width: auto; padding: 8px 20px;">Retry Connection</button>
-            </div>
-        `;
-        youtubeSearchBtn.disabled = false;
-        youtubeSearchBtn.textContent = "Search";
-    }
+    ...
+    */
 
     // --- INTERNAL MUSIC PLAYER LOGIC ---
     let player;
