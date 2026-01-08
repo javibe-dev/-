@@ -1358,7 +1358,52 @@
     // --- AD-FREE PLAYER (PIPED) ---
     // No initialization needed for iframe-based Piped player.
 
-    // --- SEARCH LOGIC (ROBUST YOUTUBE SCRAPER) ---
+    // --- SYSTEMATIC HEALTH & FALLBACK FRAMEWORK ---
+    const JaVibeRegistry = {
+        searchProxies: [
+            { id: 'allorigins-raw', url: (u) => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`, status: 'unknown', failCount: 0 },
+            { id: 'corsproxy-io', url: (u) => `https://corsproxy.io/?${encodeURIComponent(u)}`, status: 'unknown', failCount: 0 },
+            { id: 'codetabs', url: (u) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`, status: 'unknown', failCount: 0 },
+            { id: 'thingproxy', url: (u) => `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(u)}`, status: 'unknown', failCount: 0 }
+        ],
+        pipedNodes: [
+            { id: 'piped-video', url: (v) => `https://piped.video/embed/${v}?autoplay=1`, status: 'unknown', failCount: 0 },
+            { id: 'kavin-rocks', url: (v) => `https://piped.kavin.rocks/embed/${v}?autoplay=1`, status: 'unknown', failCount: 0 },
+            { id: 'projectsegfault', url: (v) => `https://piped.projectsegfau.lt/embed/${v}?autoplay=1`, status: 'unknown', failCount: 0 },
+            { id: 'lunar-icu', url: (v) => `https://piped.lunar.icu/embed/${v}?autoplay=1`, status: 'unknown', failCount: 0 },
+            { id: 'privacydev', url: (v) => `https://piped.privacydev.net/embed/${v}?autoplay=1`, status: 'unknown', failCount: 0 },
+            { id: 'yt-direct', url: (v) => `https://youtube.com/embed/${v}?autoplay=1&vq=hd720&modestbranding=1&rel=0`, status: 'stable', failCount: 0 }
+        ],
+        logs: [],
+        log(message, type = 'info') {
+            const entry = { t: new Date().toLocaleTimeString(), m: message, type };
+            this.logs.push(entry);
+            console.log(`[JaVibe ${type.toUpperCase()}] ${message}`);
+            if (this.logs.length > 50) this.logs.shift();
+        },
+        reportFailure(registry, id) {
+            const item = this[registry].find(i => i.id === id);
+            if (item) {
+                item.status = 'degraded';
+                item.failCount++;
+                this.log(`Node ${id} in ${registry} failed (${item.failCount} total)`, 'warn');
+            }
+        },
+        reportSuccess(registry, id) {
+            const item = this[registry].find(i => i.id === id);
+            if (item) {
+                item.status = 'healthy';
+                item.failCount = 0;
+            }
+        },
+        getHealthy(registry) {
+            return this[registry]
+                .filter(i => i.status !== 'dead')
+                .sort((a, b) => a.failCount - b.failCount);
+        }
+    };
+
+    // --- SEARCH LOGIC (SYSTEMATIC ITERATION) ---
     window.searchMusic = async function(query) {
         if (!query) return;
         
@@ -1375,35 +1420,32 @@
         resultsEl.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
                 <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); width: 30px; height: 30px; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
-                <p>Searching YouTube for "${query}"...</p>
+                <p>Systematically searching for "${query}"...</p>
             </div>
         `;
 
-        // Improved proxy list with 'raw' allorigins and faster alternatives
-        const proxies = [
-            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, // Use /raw for direct HTML
-            (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-            (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
-            (url) => `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`
-        ];
-
         const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`;
-
-        try {
-            const results = await Promise.any(proxies.map(async (getProxyUrl) => {
-                const response = await fetch(getProxyUrl(ytUrl));
-                if (!response.ok) throw new Error(`Proxy ${getProxyUrl} failed`);
+        const activeProxies = JaVibeRegistry.getHealthy('searchProxies');
+        
+        let success = false;
+        
+        // Iterative solution attempt
+        for (const proxy of activeProxies) {
+            try {
+                JaVibeRegistry.log(`Attempting search via ${proxy.id}...`);
+                const response = await fetch(proxy.url(ytUrl));
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
                 const html = await response.text();
-                if (!html || html.length < 500) throw new Error("Empty or invalid response");
+                if (!html || html.length < 1000) throw new Error("Invalid payload length");
 
                 const dataMatch = html.match(/var ytInitialData = ({.*?});/);
-                if (!dataMatch) throw new Error("No ytInitialData found");
+                if (!dataMatch) throw new Error("ytInitialData missing");
 
                 const ytData = JSON.parse(dataMatch[1]);
                 const sectionList = ytData.contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents;
                 const itemSection = sectionList.find(c => c.itemSectionRenderer)?.itemSectionRenderer;
-                if (!itemSection) throw new Error("No item section");
+                if (!itemSection) throw new Error("Item section missing");
 
                 const videoResults = itemSection.contents
                     .filter(c => c.videoRenderer)
@@ -1417,24 +1459,30 @@
                         };
                     });
 
-                if (videoResults.length === 0) throw new Error("No videos found");
-                return videoResults;
-            }));
+                if (videoResults.length === 0) throw new Error("Empty results list");
+                
+                JaVibeRegistry.reportSuccess('searchProxies', proxy.id);
+                window.displayResults(videoResults);
+                success = true;
+                break; // Exit loop on success
+            } catch (err) {
+                JaVibeRegistry.reportFailure('searchProxies', proxy.id);
+                JaVibeRegistry.log(`${proxy.id} failed: ${err.message}`, 'error');
+            }
+        }
 
-            window.displayResults(results);
-        } catch (err) {
-            console.error("JaVibe: All search proxies failed", err);
+        if (!success) {
             resultsEl.innerHTML = `
                 <div style="grid-column: 1/-1; text-align: center; padding: 2rem;">
-                    <p style="color: #fda4af; margin-bottom: 1rem;">Search failed. Nodes might be congested.</p>
-                    <button onclick="window.searchMusic('${query.replace(/'/g, "\\'")}')" class="primary-btn" style="width: auto; padding: 8px 20px;">Retry Now</button>
+                    <p style="color: #fda4af; margin-bottom: 1rem;">All systematic attempts failed. System nodes are congested.</p>
+                    <button onclick="window.searchMusic('${query.replace(/'/g, "\\'")}')" class="primary-btn" style="width: auto; padding: 8px 20px;">Force Retry</button>
                 </div>
             `;
-        } finally {
-            if (btn) {
-                btn.disabled = false;
-                btn.textContent = "Search Music";
-            }
+        }
+
+        if (btn) {
+            btn.disabled = false;
+            btn.textContent = "Search Music";
         }
     }
 
@@ -1450,7 +1498,6 @@
             card.className = 'music-card';
             card.onclick = () => window.playYouTubeVideo(item.videoId, item.title, item.author, item.thumb);
             
-            // Handle missing thumbnails or data
             const thumbUrl = item.thumb || `https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg`;
             const titleText = item.title || "Unknown Title";
             const authorText = item.author || "YouTube Content";
@@ -1483,26 +1530,18 @@
             icon.classList.add('rotated');
         }
 
-        // Multi-instance Piped fallback for ad-free mobile playback
-        const pipedInstances = [
-            `https://piped.mha.fi/embed/${videoId}?autoplay=1`,
-            `https://piped.video/embed/${videoId}?autoplay=1`,
-            `https://piped.privacydev.net/embed/${videoId}?autoplay=1`,
-            `https://youtube.com/embed/${videoId}?autoplay=1&vq=hd720&modestbranding=1&rel=0`
-        ];
+        const healthyNodes = JaVibeRegistry.getHealthy('pipedNodes');
+        let nodeIndex = 0;
 
-        let currentInstance = 0;
-        
-        const tryNextInstance = () => {
-            if (currentInstance < pipedInstances.length) {
-                console.log(`JaVibe: Trying instance ${currentInstance}: ${pipedInstances[currentInstance]}`);
-                playerIframe.src = pipedInstances[currentInstance];
-                currentInstance++;
+        const tryNextNode = () => {
+            if (nodeIndex < healthyNodes.length) {
+                const node = healthyNodes[nodeIndex];
+                JaVibeRegistry.log(`Attempting playback via ${node.id}...`);
+                playerIframe.src = node.url(videoId);
+                nodeIndex++;
             }
         };
 
-        // If the iframe fails to load or Piped returns 500, we can't easily catch it via standard iframe events
-        // but we can provide a manual "Switch Mirror" button for the user if it's stuck.
         const existingSwitch = document.getElementById('mirrorSwitchBtn');
         if (existingSwitch) existingSwitch.remove();
 
@@ -1510,14 +1549,15 @@
         switchBtn.id = 'mirrorSwitchBtn';
         switchBtn.className = 'primary-btn';
         switchBtn.style = 'position: absolute; bottom: 10px; right: 10px; width: auto; font-size: 11px; padding: 4px 8px; z-index: 10; opacity: 0.6;';
-        switchBtn.textContent = 'Switch Mirror (Ad-Free Fix)';
+        switchBtn.textContent = 'Auto-Repair Playback';
         switchBtn.onclick = (e) => {
             e.stopPropagation();
-            tryNextInstance();
+            JaVibeRegistry.reportFailure('pipedNodes', healthyNodes[nodeIndex-1]?.id);
+            tryNextNode();
         };
         
         document.getElementById('playerSection').appendChild(switchBtn);
-        tryNextInstance();
+        tryNextNode();
     }
 
     // Mirror switching logic removed as requested for standard YouTube player reliability
