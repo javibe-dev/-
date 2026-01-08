@@ -1302,8 +1302,11 @@
     let playerRetryCount = 0;
 
     function initYouTubePlayer() {
+        console.log(`JaVibe: Initializing Player (Attempt ${playerRetryCount + 1})...`);
+        
         if (typeof YT === 'undefined' || !YT.Player) {
-            if (playerRetryCount < 10) {
+            console.log("JaVibe: YT API not ready yet...");
+            if (playerRetryCount < 15) {
                 playerRetryCount++;
                 setTimeout(initYouTubePlayer, 1000);
             }
@@ -1312,45 +1315,75 @@
 
         const playerDiv = document.getElementById('youtube-player');
         if (!playerDiv) {
-            if (playerRetryCount < 10) {
+            console.warn("JaVibe: youtube-player div not found in DOM!");
+            if (playerRetryCount < 15) {
                 playerRetryCount++;
                 setTimeout(initYouTubePlayer, 1000);
             }
             return;
         }
 
-        player = new YT.Player('youtube-player', {
-            height: '100%',
-            width: '100%',
-            playerVars: { 'autoplay': 1, 'controls': 1, 'modestbranding': 1, 'origin': window.location.origin },
-            events: {
-                'onReady': (event) => {
-                    console.log("JaVibe: YouTube Player Ready");
-                    playerReady = true;
+        try {
+            // Ensure container is briefly visible if needed for initialization
+            const bar = document.getElementById('musicPlayerBar');
+            const section = document.getElementById('playerSection');
+            const originalBarDisplay = bar.style.display;
+            const originalSectionDisplay = section.style.display;
+            
+            // Some browsers/API versions need the element to be visible to init properly
+            bar.style.display = 'flex';
+            section.style.display = 'block';
+            bar.style.opacity = '0'; // Keep it invisible but "displayed"
+
+            player = new YT.Player('youtube-player', {
+                height: '100%',
+                width: '100%',
+                playerVars: { 
+                    'autoplay': 1, 
+                    'controls': 1, 
+                    'modestbranding': 1, 
+                    'origin': window.location.origin,
+                    'enablejsapi': 1
                 },
-                'onStateChange': (event) => {
-                    if (event.data === YT.PlayerState.PLAYING) {
-                        isPlaying = true;
-                        updatePlayPauseUI(true);
-                        startProgressLoop();
-                    } else {
-                        isPlaying = false;
-                        updatePlayPauseUI(false);
-                        stopProgressLoop();
-                    }
-                },
-                'onError': (e) => {
-                    console.error("JaVibe: YT Player Error:", e);
-                    // If video restricted, alert user about cookies
-                    if (e.data === 101 || e.data === 150) {
-                        alert("This video is restricted. Make sure you've added your cookies.txt content in Settings!");
+                events: {
+                    'onReady': (event) => {
+                        console.log("JaVibe: YouTube Player Ready Event Fired");
+                        playerReady = true;
+                        // Restore original visibility
+                        bar.style.display = originalBarDisplay;
+                        section.style.display = originalSectionDisplay;
+                        bar.style.opacity = '1';
+                    },
+                    'onStateChange': (event) => {
+                        if (event.data === YT.PlayerState.PLAYING) {
+                            isPlaying = true;
+                            updatePlayPauseUI(true);
+                            startProgressLoop();
+                        } else {
+                            isPlaying = false;
+                            updatePlayPauseUI(false);
+                            stopProgressLoop();
+                        }
+                    },
+                    'onError': (e) => {
+                        console.error("JaVibe: YT Player Error:", e);
+                        if (e.data === 101 || e.data === 150) {
+                            alert("This video is restricted. Make sure you've added your cookies.txt content in Settings!");
+                        }
                     }
                 }
-            }
-        });
+            });
+        } catch (err) {
+            console.error("JaVibe: Critical error during YT.Player init:", err);
+        }
     }
 
-    window.onYouTubeIframeAPIReady = initYouTubePlayer;
+    // Force check if API is already loaded (sometimes onYouTubeIframeAPIReady doesn't fire if script loads too fast)
+    if (window.YT && window.YT.Player) {
+        initYouTubePlayer();
+    } else {
+        window.onYouTubeIframeAPIReady = initYouTubePlayer;
+    }
 
     // Helper to fetch through multiple CORS proxies
     async function fetchWithProxy(url, type = 'text', method = 'GET', body = null) {
@@ -1525,15 +1558,25 @@
     function displayResults(results) {
         const resultsEl = document.getElementById('musicResults');
         resultsEl.innerHTML = '';
+        if (!results || results.length === 0) {
+            resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">No results found.</p>`;
+            return;
+        }
         results.forEach(item => {
             const card = document.createElement('div');
             card.className = 'music-card';
             card.onclick = () => playYouTubeVideo(item.videoId, item.title, item.author, item.thumb);
+            
+            // Handle missing thumbnails or data
+            const thumbUrl = item.thumb || `https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg`;
+            const titleText = item.title || "Unknown Title";
+            const authorText = item.author || "YouTube Content";
+
             card.innerHTML = `
-                <img src="${item.thumb}" alt="${item.title}" onerror="this.src='https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg'">
+                <img src="${thumbUrl}" alt="${titleText}" onerror="this.src='https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg'">
                 <div class="music-card-content">
-                    <h5>${item.title}</h5>
-                    <p>${item.author}</p>
+                    <h5>${titleText}</h5>
+                    <p>${authorText}</p>
                 </div>
             `;
             resultsEl.appendChild(card);
