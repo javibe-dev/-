@@ -1375,6 +1375,7 @@
             `https://api.codetabs.com/v1/proxy?url=${encodeURIComponent(url)}`,
             `https://corsproxy.io/?${encodeURIComponent(url)}`,
             `https://cors-proxy.org/?url=${encodeURIComponent(url)}`,
+            `https://thingproxy.freeboard.io/fetch/${url}`,
             `https://corsproxy.org/?${encodeURIComponent(url)}` // Moved to end (often blocks)
         ];
 
@@ -1410,13 +1411,28 @@
                     result = await response.text();
                 }
 
-                // SECURITY/BLOCK CHECK: Some proxies return 200 OK but with "Forbidden" in the body
-                if (typeof result === 'string' && (result.includes('Forbidden') || result.includes('access denied') || result.includes('Protected by go-away'))) {
-                    console.warn(`JaVibe: Proxy ${proxy} returned an administrative block message.`);
+                // SECURITY/BLOCK CHECK: Robust detection of anti-bot/forbidden challenges
+                const isBlocked = typeof result === 'string' && (
+                    result.includes('Forbidden') || 
+                    result.includes('access denied') || 
+                    result.includes('Protected by go-away') ||
+                    result.includes('administrative rule') ||
+                    result.includes('verifying your request') ||
+                    result.includes('Cloudflare') ||
+                    result.includes('hCaptcha')
+                );
+
+                if (isBlocked) {
+                    console.warn(`JaVibe: Proxy ${proxy} returned an administrative block or challenge.`);
                     continue;
                 }
                 
-                return type === 'json' ? JSON.parse(result) : result;
+                try {
+                    return type === 'json' ? JSON.parse(result) : result;
+                } catch (parseErr) {
+                    console.warn(`JaVibe: Failed to parse result from ${proxy} as ${type}`);
+                    continue;
+                }
             } catch (err) {
                 console.warn(`JaVibe: Proxy ${proxy} failed`, err);
             }
@@ -1449,16 +1465,17 @@
             </div>
         `;
 
-        // NEW STRATEGY: Use Piped/Invidious APIs DIRECTLY as primary. 
-        // These are CORS-enabled and much more reliable for searching.
+        // IMPROVED SEARCH STRATEGY: Prioritize CORS-enabled mirrors and use proxy fallback
         const apiInstances = [
             { url: 'https://pipedapi.moomoo.me', type: 'piped' },
             { url: 'https://api.piped.victr.me', type: 'piped' },
             { url: 'https://pipedapi.mha.fi', type: 'piped' },
             { url: 'https://pipedapi.adminforge.de', type: 'piped' },
+            { url: 'https://pipedapi.astartes.nl', type: 'piped' },
             { url: 'https://inv.zzls.xyz', type: 'invidious' },
             { url: 'https://invidious.projectsegfau.lt', type: 'invidious' },
-            { url: 'https://yewtu.be', type: 'invidious' }
+            { url: 'https://invidious.privacydev.net', type: 'invidious' }
+            // yewtu.be removed due to aggressive bot blocking/CORS issues
         ];
 
         for (const instance of apiInstances) {
@@ -1468,10 +1485,21 @@
                     ? `${instance.url}/search?q=${encodeURIComponent(query)}&filter=videos`
                     : `${instance.url}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
                 
-                const res = await fetch(searchUrl);
-                if (!res.ok) continue;
+                let data;
+                try {
+                    // Try direct fetch first (fastest)
+                    const res = await fetch(searchUrl);
+                    if (res.ok) {
+                        data = await res.json();
+                    } else {
+                        throw new Error(`Direct fetch failed: ${res.status}`);
+                    }
+                } catch (directErr) {
+                    console.warn(`JaVibe: Direct fetch failed for ${instance.url}, trying proxy fallback...`);
+                    // Fallback to proxy if direct fetch fails (CORS or blocking)
+                    data = await fetchWithProxy(searchUrl, 'json');
+                }
                 
-                const data = await res.json();
                 const items = instance.type === 'piped' ? data.items : data;
                 
                 if (items && items.length > 0) {
@@ -1490,7 +1518,7 @@
                     }
                 }
             } catch (err) {
-                console.warn(`JaVibe: Instance ${instance.url} failed`, err);
+                console.warn(`JaVibe: Instance ${instance.url} completely failed`, err);
                 continue;
             }
         }
