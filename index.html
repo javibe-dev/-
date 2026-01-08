@@ -1105,20 +1105,21 @@
     const youtubeResults = document.getElementById('youtubeResults');
 
     // List of reliable Piped/Invidious instances for fallback
+    // Reliable Piped & Invidious instances
     const SEARCH_INSTANCES = [
         "https://pipedapi.kavin.rocks",
         "https://api.piped.victr.me",
-        "https://pipedapi.leptons.xyz",
-        "https://piped-api.garudalinux.org",
-        "https://api-piped.mha.fi",
-        "https://pipedapi.rivo.cc"
+        "https://invidious.snopyta.org",
+        "https://yewtu.be",
+        "https://pipedapi.rivo.cc",
+        "https://api-piped.mha.fi"
     ];
 
-    // CORS Proxies to bypass browser restrictions
+    // More reliable CORS proxies
     const PROXIES = [
         "https://api.allorigins.win/raw?url=",
-        "https://corsproxy.io/?",
-        "https://thingproxy.freeboard.io/fetch/"
+        "https://corsproxy.io/?url=",
+        "https://api.codetabs.com/v1/proxy?quest="
     ];
 
     async function searchYouTube(query) {
@@ -1137,8 +1138,11 @@
 
         // Try instances
         for (const instance of SEARCH_INSTANCES) {
-            // First, try direct fetch (some instances support CORS)
-            const targetUrl = `${instance}/search?q=${encodeURIComponent(query)}&filter=music_songs`;
+            // Determine if Invidious or Piped for the query parameters
+            const isInvidious = instance.includes('invidious') || instance.includes('yewtu.be');
+            const targetUrl = isInvidious 
+                ? `${instance}/api/v1/search?q=${encodeURIComponent(query)}&type=video`
+                : `${instance}/search?q=${encodeURIComponent(query)}&filter=music_songs`;
             
             try {
                 console.log(`JaVibe: Trying direct fetch from ${instance}`);
@@ -1264,7 +1268,7 @@
             height: '0',
             width: '0',
             videoId: '',
-            host: 'https://www.youtube-nocookie.com',
+            host: 'https://www.youtube.com',
             playerVars: {
                 'autoplay': 0,
                 'controls': 0,
@@ -1273,7 +1277,9 @@
                 'rel': 0,
                 'showinfo': 0,
                 'modestbranding': 1,
-                'origin': window.location.origin
+                'origin': window.location.protocol + '//' + window.location.host,
+                'enablejsapi': 1,
+                'widget_referrer': window.location.href
             },
             events: {
                 'onStateChange': onPlayerStateChange
