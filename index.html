@@ -1110,8 +1110,12 @@
         "https://api.piped.victr.me",
         "https://pipedapi.leptons.xyz",
         "https://piped-api.garudalinux.org",
-        "https://api-piped.mha.fi"
+        "https://api-piped.mha.fi",
+        "https://pipedapi.rivo.cc"
     ];
+
+    // CORS Proxy to bypass browser restrictions
+    const CORS_PROXY = "https://api.allorigins.win/raw?url=";
 
     async function searchYouTube(query) {
         if (!query) return;
@@ -1130,8 +1134,13 @@
         // Try multiple instances in case of 500 or quota issues
         for (const instance of SEARCH_INSTANCES) {
             try {
-                console.log(`JaVibe: Trying instance ${instance}`);
-                const response = await fetch(`${instance}/search?q=${encodeURIComponent(query)}&filter=music_songs`);
+                console.log(`JaVibe: Trying instance ${instance} via proxy`);
+                
+                // Construct the target URL
+                const targetUrl = `${instance}/search?q=${encodeURIComponent(query)}&filter=music_songs`;
+                
+                // Use AllOrigins proxy to bypass CORS
+                const response = await fetch(`${CORS_PROXY}${encodeURIComponent(targetUrl)}`);
                 
                 if (!response.ok) {
                     throw new Error(`Instance ${instance} returned ${response.status}`);
