@@ -1334,96 +1334,77 @@
         resultsEl.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
                 <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); width: 30px; height: 30px; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
-                <p>Searching YouTube (No-API Mode)...</p>
+                <p>Connecting to Music Stream...</p>
             </div>
         `;
 
-        try {
-            // Using corsproxy.io - it's generally more stable for GitHub Pages origins
-            const searchUrl = `https://corsproxy.io/?${encodeURIComponent(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`)}`;
-            const response = await fetch(searchUrl);
-            const html = await response.text();
-
-            // More robust regex for raw HTML (ytsearch style)
-            // This looks for the videoId, thumbnail, title, and channel in the initial data blob
-            const regex = /"videoRenderer":\{"videoId":"([^"]+)","thumbnail":\{"thumbnails":\[\{"url":"([^"]+)"[^}]+\]\},"title":\{"runs":\[\{"text":"([^"]+)"\}\][^}]+\},"longBylineText":\{"runs":\[\{"text":"([^"]+)"/g;
-            let match;
-            const results = [];
-            
-            while ((match = regex.exec(html)) !== null && results.length < 20) {
-                const videoId = match[1];
-                const title = match[3].replace(/\\u0026/g, '&').replace(/\\"/g, '"');
-                const author = match[4].replace(/\\u0026/g, '&');
-                const thumb = match[2].split('?')[0];
-
-                results.push({ videoId, thumb, title, author });
-            }
-
-            if (results.length === 0) {
-                // Try an even broader regex if the first one fails (YouTube changes HTML often)
-                const altRegex = /"videoId":"([^"]+)","thumbnail":\{"thumbnails":\[\{"url":"([^"]+)"[^}]+\]\},"title":\{"runs":\[\{"text":"([^"]+)"\}\]/g;
-                while ((match = altRegex.exec(html)) !== null && results.length < 20) {
-                    if (!results.find(r => r.videoId === match[1])) {
-                        results.push({
-                            videoId: match[1],
-                            thumb: match[2].split('?')[0],
-                            title: match[3].replace(/\\u0026/g, '&'),
-                            author: "YouTube"
-                        });
-                    }
-                }
-            }
-
-            if (results.length === 0) throw new Error("No results found in YouTube response.");
-
-            resultsEl.innerHTML = '';
-            results.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'music-card';
-                card.onclick = () => playYouTubeVideo(item.videoId, item.title, item.author, item.thumb);
-                card.innerHTML = `
-                    <img src="${item.thumb}" alt="${item.title}" onerror="this.src='https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg'">
-                    <div class="music-card-content">
-                        <h5>${item.title}</h5>
-                        <p>${item.author}</p>
-                    </div>
-                `;
-                resultsEl.appendChild(card);
-            });
-
-        } catch (error) {
-            console.error("Scraper Error:", error);
-            // Last resort: Invidious API via proxy
-            try {
-                const invidiousUrl = `https://corsproxy.io/?${encodeURIComponent(`https://vid.puffyan.us/api/v1/search?q=${encodeURIComponent(query)}&type=video`)}`;
-                const response = await fetch(invidiousUrl);
-                const items = await response.json();
-                
-                if (Array.isArray(items) && items.length > 0) {
-                    resultsEl.innerHTML = '';
-                    items.forEach(item => {
-                        const thumb = `https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg`;
-                        const card = document.createElement('div');
-                        card.className = 'music-card';
-                        card.onclick = () => playYouTubeVideo(item.videoId, item.title, item.author, thumb);
-                        card.innerHTML = `<img src="${thumb}"> <div class="music-card-content"><h5>${item.title}</h5><p>${item.author}</p></div>`;
-                        resultsEl.appendChild(card);
-                    });
-                } else {
-                    throw new Error("Empty fallback results");
-                }
-            } catch (e) {
-                resultsEl.innerHTML = `
-                    <div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">
-                        <p>Search failed. Your network is blocking all bypass methods.</p>
-                        <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">Error: ${e.message}</p>
-                    </div>
-                `;
-            }
-        } finally {
+        // Check if query is a direct YouTube URL or ID
+        const ytIdMatch = query.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
+        if (ytIdMatch) {
+            const videoId = ytIdMatch[1];
+            playYouTubeVideo(videoId, "Direct Link Video", "YouTube", `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`);
             btn.disabled = false;
             btn.textContent = "Search Music";
+            return;
         }
+
+        // Reliable Piped API Instances (No-API, No-Quota)
+        const instances = [
+            'https://pipedapi.kavin.rocks',
+            'https://pipedapi.rivo.gg',
+            'https://piped-api.garudalinux.org',
+            'https://pipedapi.adminforge.de'
+        ];
+
+        let success = false;
+        for (const instance of instances) {
+            try {
+                const response = await fetch(`${instance}/search?q=${encodeURIComponent(query)}&filter=videos`);
+                if (!response.ok) continue;
+                
+                const data = await response.json();
+                const items = data.items || [];
+                
+                if (items.length === 0) continue;
+
+                resultsEl.innerHTML = '';
+                items.forEach(item => {
+                    const videoId = item.url.split('v=')[1] || item.url.split('/').pop();
+                    const title = item.title;
+                    const thumb = item.thumbnail;
+                    const channel = item.uploaderName;
+
+                    const card = document.createElement('div');
+                    card.className = 'music-card';
+                    card.onclick = () => playYouTubeVideo(videoId, title, channel, thumb);
+                    card.innerHTML = `
+                        <img src="${thumb}" alt="${title}" onerror="this.src='https://img.youtube.com/vi/${videoId}/hqdefault.jpg'">
+                        <div class="music-card-content">
+                            <h5>${title}</h5>
+                            <p>${channel}</p>
+                        </div>
+                    `;
+                    resultsEl.appendChild(card);
+                });
+
+                success = true;
+                break; // Exit loop on success
+            } catch (err) {
+                console.warn(`Instance ${instance} failed:`, err);
+            }
+        }
+
+        if (!success) {
+            resultsEl.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">
+                    <p>Search failed. All music streams are currently busy.</p>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">Try pasting a direct YouTube link instead!</p>
+                </div>
+            `;
+        }
+        
+        btn.disabled = false;
+        btn.textContent = "Search Music";
     }
 
     function playYouTubeVideo(videoId, title, artist, thumb) {
