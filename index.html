@@ -1115,6 +1115,51 @@
         }
     };
 
+    // --- PLAYER STATE ---
+    let player; // YouTube Player
+    let audioPlayer = new Audio(); // Spotify/Audio Player
+    let isPlaying = false;
+    let progressInterval;
+
+    function startProgressLoop() {
+        if (progressInterval) clearInterval(progressInterval);
+        progressInterval = setInterval(() => {
+            if (audioPlayer.src && !audioPlayer.paused) {
+                updateProgressBar(audioPlayer.currentTime, audioPlayer.duration);
+            } else if (player && player.getCurrentTime && isPlaying) {
+                updateProgressBar(player.getCurrentTime(), player.getDuration());
+            }
+        }, 500);
+    }
+
+    function stopProgressLoop() {
+        if (progressInterval) {
+            clearInterval(progressInterval);
+            progressInterval = null;
+        }
+    }
+
+    function updateProgressBar(current, total) {
+        const progressBar = document.getElementById('progressBar');
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationEl = document.getElementById('duration');
+        
+        if (total > 0) {
+            const pct = (current / total) * 100;
+            progressBar.style.width = `${pct}%`;
+            
+            currentTimeEl.textContent = formatTime(current);
+            durationEl.textContent = formatTime(total);
+        }
+    }
+
+    function formatTime(seconds) {
+        if (isNaN(seconds)) return "0:00";
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
     // --- SPOTIFY INTEGRATION ---
     const SPOTIFY_CLIENT_ID = "04261d76387040718664f3316e6d762e"; // Replace with your actual Client ID if needed
     const REDIRECT_URI = window.location.origin + window.location.pathname;
@@ -1279,10 +1324,10 @@
     spotifySearchBtn.onclick = () => searchSpotify(spotifySearchInput.value);
     spotifySearchInput.onkeypress = (e) => { if (e.key === 'Enter') searchSpotify(spotifySearchInput.value); };
 
-    // --- SPOTIFY PLAYER LOGIC ---
-    let audioPlayer = new Audio();
-    
     function playSpotifyTrack(trackId, title, artist, thumb, previewUrl) {
+        // Stop any YT playback
+        if (player && player.pauseVideo) player.pauseVideo();
+        
         // Show player bar
         const playerBar = document.getElementById('musicPlayerBar');
         playerBar.style.display = 'flex';
@@ -1292,14 +1337,9 @@
         document.getElementById('playerArtist').textContent = artist;
         document.getElementById('playerThumb').src = thumb;
         
-        // For playback: Spotify Embed is easiest for full playback, 
-        // but since user wants "actual songs", we can use a Spotify Embed Player 
-        // that replaces the hidden YT player.
-        
         const playerContainer = document.getElementById('youtube-player-container');
         playerContainer.innerHTML = `<iframe src="https://open.spotify.com/embed/track/${trackId}" width="300" height="380" frameborder="0" allowtransparency="true" allow="encrypted-media"></iframe>`;
         
-        // If there's a preview URL, we can also use that for a smoother local experience
         if (previewUrl) {
             audioPlayer.src = previewUrl;
             audioPlayer.play();
@@ -1307,9 +1347,9 @@
             updatePlayPauseUI(true);
             startProgressLoop();
         } else {
-            // No preview, just show the embed
             isPlaying = true;
             updatePlayPauseUI(true);
+            stopProgressLoop(); // No preview means no local progress tracking
         }
     }
 
@@ -1319,7 +1359,7 @@
     }
 
     window.togglePlayPause = () => {
-        if (audioPlayer.src) {
+        if (audioPlayer.src && audioPlayer.src !== window.location.href) {
             if (isPlaying) {
                 audioPlayer.pause();
             } else {
@@ -1327,38 +1367,17 @@
             }
             isPlaying = !isPlaying;
             updatePlayPauseUI(isPlaying);
+        } else if (player && player.getPlayerState) {
+            const state = player.getPlayerState();
+            if (state === YT.PlayerState.PLAYING) {
+                player.pauseVideo();
+            } else {
+                player.playVideo();
+            }
         }
     };
 
-    function startProgressLoop() {
-        setInterval(() => {
-            if (isPlaying && audioPlayer.duration) {
-                const pct = (audioPlayer.currentTime / audioPlayer.duration) * 100;
-                document.getElementById('progressBar').style.width = `${pct}%`;
-                document.getElementById('currentTime').textContent = formatTime(audioPlayer.currentTime);
-                document.getElementById('duration').textContent = formatTime(audioPlayer.duration);
-            }
-        }, 500);
-    }
-
-    function formatTime(seconds) {
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    }
-
-    // --- LEGACY YOUTUBE SEARCH (Disabled) ---
-    /*
-    const youtubeSearchInput = document.getElementById('youtubeSearchInput');
-    const youtubeSearchBtn = document.getElementById('youtubeSearchBtn');
-    const youtubeResults = document.getElementById('youtubeResults');
-    ...
-    */
-
-    // --- INTERNAL MUSIC PLAYER LOGIC ---
-    let player;
-    let isPlaying = false;
-
+    // --- INTERNAL MUSIC PLAYER LOGIC (YouTube) ---
     // Load YouTube IFrame API
     const tag = document.createElement('script');
     tag.src = "https://www.youtube.com/iframe_api";
@@ -1390,64 +1409,34 @@
     };
 
     function onPlayerStateChange(event) {
-        const btn = document.getElementById('playPauseBtn');
         if (event.data == YT.PlayerState.PLAYING) {
             isPlaying = true;
-            btn.innerHTML = '<i class="fas fa-pause" style="color: black;"></i>';
+            updatePlayPauseUI(true);
             startProgressLoop();
+            // Stop Spotify if playing
+            if (audioPlayer) audioPlayer.pause();
         } else {
             isPlaying = false;
-            btn.innerHTML = '<i class="fas fa-play" style="color: black; margin-left: 3px;"></i>';
+            updatePlayPauseUI(false);
             stopProgressLoop();
         }
     }
 
-    let progressInterval;
-    function startProgressLoop() {
-        if (progressInterval) clearInterval(progressInterval);
-        progressInterval = setInterval(() => {
-            if (player && player.getCurrentTime) {
-                const current = player.getCurrentTime();
-                const total = player.getDuration();
-                updateProgressBar(current, total);
-            }
-        }, 500);
-    }
-
-    function stopProgressLoop() {
-        clearInterval(progressInterval);
-    }
-
-    function updateProgressBar(current, total) {
-        const progressBar = document.getElementById('progressBar');
-        const currentTimeEl = document.getElementById('currentTime');
-        const durationEl = document.getElementById('duration');
-        
-        if (total > 0) {
-            const pct = (current / total) * 100;
-            progressBar.style.width = `${pct}%`;
-            
-            currentTimeEl.textContent = formatTime(current);
-            durationEl.textContent = formatTime(total);
-        }
-    }
-
-    function formatTime(seconds) {
-        const mins = Math.floor(seconds / 60);
-        const secs = Math.floor(seconds % 60);
-        return `${mins}:${secs.toString().padStart(2, '0')}`;
-    }
-
     document.getElementById('progressContainer').onclick = (e) => {
-        if (!player || !player.getDuration) return;
         const rect = e.currentTarget.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const pct = x / rect.width;
-        const seekTime = player.getDuration() * pct;
-        player.seekTo(seekTime, true);
+        
+        if (audioPlayer.src && audioPlayer.src !== window.location.href) {
+            audioPlayer.currentTime = audioPlayer.duration * pct;
+        } else if (player && player.getDuration) {
+            const seekTime = player.getDuration() * pct;
+            player.seekTo(seekTime, true);
+        }
     };
 
     window.playSong = function(videoId, title, artist, thumb) {
+        if (audioPlayer) audioPlayer.pause();
         if (!player) return;
         player.loadVideoById(videoId);
         document.getElementById('musicPlayerBar').style.display = 'flex';
@@ -1457,16 +1446,19 @@
         isPlaying = true;
     };
 
-    window.togglePlayPause = function() {
-        if (!player) return;
-        if (isPlaying) {
-            player.pauseVideo();
-        } else {
-            player.playVideo();
-        }
-    };
-
     document.getElementById('volumeSlider').addEventListener('input', (e) => {
+        const vol = e.target.value;
+        if (audioPlayer) audioPlayer.volume = vol / 100;
+        if (player && player.setVolume) player.setVolume(vol);
+    });
+
+    // --- LEGACY YOUTUBE SEARCH (Disabled) ---
+    /*
+    const youtubeSearchInput = document.getElementById('youtubeSearchInput');
+    const youtubeSearchBtn = document.getElementById('youtubeSearchBtn');
+    const youtubeResults = document.getElementById('youtubeResults');
+    ...
+    */
         if (player && player.setVolume) {
             player.setVolume(e.target.value);
         }
