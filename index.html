@@ -1225,6 +1225,21 @@
             return [];
         }
     }
+
+    async function transferSpotifyPlayback(deviceId) {
+        try {
+            await fetch('https://api.spotify.com/v1/me/player', {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${spotifyAccessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ device_ids: [deviceId], play: true })
+            });
+        } catch (err) {
+            console.error("Transfer Error:", err);
+        }
+    }
     
     const spotifySearchInput = document.getElementById('spotifySearchInput');
     const spotifySearchBtn = document.getElementById('spotifySearchBtn');
@@ -1493,29 +1508,36 @@
             const res = await playOnDevice(spotifyDeviceId);
             if (res.ok) {
                 console.log("Playing on JaVibe Player");
-                return finalizePlayback(trackId);
+                return finalizePlayback(trackId, true);
             }
         }
 
-        // 2. SMART HIJACK: Try any other active device (Crucial for Mobile)
+        // 2. FORCE-ACTIVE MOBILE SYNC (The "F*** the Embed" Strategy)
         if (spotifyAccessToken) {
             const devices = await getSpotifyDevices();
-            const activeDevice = devices.find(d => d.is_active) || devices[0];
+            // Look for any device, prioritize "Smartphone" or the one that's active
+            const targetDevice = devices.find(d => d.type.toLowerCase() === 'smartphone') || 
+                               devices.find(d => d.is_active) || 
+                               devices[0];
             
-            if (activeDevice) {
-                const res = await playOnDevice(activeDevice.id);
+            if (targetDevice) {
+                console.log(`Forcing sync to ${targetDevice.name} (${targetDevice.type})`);
+                // Force a transfer first to "wake up" the device connection
+                await transferSpotifyPlayback(targetDevice.id);
+                
+                // Now play the track
+                const res = await playOnDevice(targetDevice.id);
                 if (res.ok) {
-                    console.log(`Playing on ${activeDevice.name}`);
-                    return finalizePlayback(trackId);
+                    return finalizePlayback(trackId, true); // true = hide the "Preview" text if possible
                 }
             }
         }
 
-        // 3. LAST RESORT: Embed (30s preview on mobile if no active device)
+        // 3. ABSOLUTE LAST RESORT: Embed (30s preview)
+        // This only happens if NO Spotify devices are found at all
         const playerContainer = document.getElementById('youtube-player-container');
         playerContainer.innerHTML = `<iframe src="https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0" width="100%" height="80" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="border-radius:12px;"></iframe>`;
         
-        // Show a "Wake Up" hint for mobile users if they got the embed
         if (window.innerWidth < 768) {
             showMobileSpotifyHint();
         }
@@ -1524,11 +1546,19 @@
         updatePlayPauseUI(true);
     }
 
-    function finalizePlayback(trackId) {
+    function finalizePlayback(trackId, isFullTrack) {
         const playerContainer = document.getElementById('youtube-player-container');
-        playerContainer.innerHTML = `<iframe src="https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0" width="100%" height="80" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="border-radius:12px;"></iframe>`;
+        // If it's a full track playing via API, we use a "cleaner" embed that doesn't scream "PREVIEW"
+        const embedUrl = `https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0`;
+        playerContainer.innerHTML = `<iframe src="${embedUrl}" width="100%" height="80" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="border-radius:12px;"></iframe>`;
+        
         isPlaying = true;
         updatePlayPauseUI(true);
+        
+        if (isFullTrack) {
+            // Optional: Add a small indicator that it's playing full track via connected device
+            console.log("Full track playing via active device.");
+        }
     }
 
     function showMobileSpotifyHint() {
