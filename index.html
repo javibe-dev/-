@@ -1082,8 +1082,8 @@
 
     // --- LOADING SCREEN LOGIC ---
     const tips = [
+        "Use the search bar to find any song or video.",
         "JaVibe is designed for speed and simplicity.",
-        "You can upgrade to Premium for exclusive features.",
         "Our Discord community is always here to help!",
         "Music sounds better when shared with friends.",
         "You can change your username in the settings.",
@@ -1179,12 +1179,14 @@
     });
 
     // Global toggle function
-    window.toggleView = (showSignup) => {
+    window.toggleView = (showSignup, skipPush = false) => {
         const container = document.getElementById('mainContainer');
         if (showSignup) {
             container.classList.add('show-signup');
+            if (!skipPush) window.updateRoute('signup');
         } else {
             container.classList.remove('show-signup');
+            if (!skipPush) window.updateRoute('login');
         }
     };
 
@@ -1205,6 +1207,11 @@
                     
                     document.getElementById('profileEmail').textContent = user.email;
                     document.getElementById('profileName').textContent = user.displayName || 'N/A';
+                    
+                    // Default to home if on auth paths after login
+                    if (window.location.pathname.includes('/-/login') || window.location.pathname.includes('/-/signup')) {
+                        window.showSection('home');
+                    }
                 }, 400);
             } else {
                 // Logged in but not verified
@@ -1212,6 +1219,7 @@
                 dashboardView.style.display = 'none';
                 authView.classList.add('active');
                 showMessage("Please verify your email! Check your inbox.", true);
+                window.updateRoute('verify');
                 
                 const msgDiv = document.getElementById('message');
                 if (!document.getElementById('refreshVerifyBtn')) {
@@ -1235,6 +1243,11 @@
                 setTimeout(() => authView.classList.add('active'), 50);
                 // Re-initialize buttons just in case
                 if (typeof initAuthButtons === 'function') initAuthButtons();
+                
+                // If on dashboard/home paths while logged out, move to login
+                if (window.location.pathname.includes('/-/home') || window.location.pathname.includes('/-/dashboard')) {
+                    window.toggleView(false);
+                }
             }, 400);
         }
     });
@@ -1242,10 +1255,23 @@
     // Event listeners for switching
     const toSignup = document.getElementById('toSignup');
     const toLogin = document.getElementById('toLogin');
-    if (toSignup) toSignup.onclick = () => toggleView(true);
-    if (toLogin) toLogin.onclick = () => toggleView(false);
+    if (toSignup) toSignup.onclick = () => window.toggleView(true);
+    if (toLogin) toLogin.onclick = () => window.toggleView(false);
 
-    window.showSection = (section) => {
+    // --- SPA ROUTING SYSTEM ---
+    window.updateRoute = (section, query = null) => {
+        let path = `/-/` + section;
+        if (query) {
+            path += `?v=${encodeURIComponent(query)}`;
+        }
+        
+        // Update URL without reload
+        if (window.location.pathname + window.location.search !== path) {
+            history.pushState({ section, query }, "", path);
+        }
+    };
+
+    window.showSection = (section, skipPush = false) => {
         document.getElementById('homeSection').style.display = 'none';
         document.getElementById('dashboardSection').style.display = 'none';
         document.getElementById('profileSection').style.display = 'none';
@@ -1254,6 +1280,10 @@
         const sectionId = `${section}Section`;
         const targetSection = document.getElementById(sectionId);
         if (targetSection) targetSection.style.display = 'block';
+
+        if (!skipPush) {
+            window.updateRoute(section);
+        }
 
         // Clear search results when switching to dashboard (Music)
         if (section === 'dashboard') {
@@ -1276,16 +1306,65 @@
                 item.classList.add('active');
             }
         });
+    };
 
-        // Update title and icon if dashboard section
-        if (section === 'dashboard') {
-            // Dashboard has its own title structure in the HTML
+    // Handle Browser Back/Forward
+    window.onpopstate = (event) => {
+        const state = event.state;
+        if (state && state.section) {
+            if (state.section === 'login') {
+                window.toggleView(false, true);
+            } else if (state.section === 'signup') {
+                window.toggleView(true, true);
+            } else {
+                window.showSection(state.section, true);
+                if (state.section === 'dashboard' && state.query) {
+                    const searchInput = document.getElementById('musicSearchInput');
+                    if (searchInput) searchInput.value = state.query;
+                    window.searchMusic(state.query, true);
+                }
+            }
         } else {
-            // For other sections, we could update the top title if needed
+            // Fallback for initial states or empty history
+            const path = window.location.pathname;
+            if (path.includes('/-/signup')) window.toggleView(true, true);
+            else if (path.includes('/-/login')) window.toggleView(false, true);
+            else window.showSection('home', true);
         }
     };
 
+    // Initial Route Check
+    window.addEventListener('load', () => {
+        const path = window.location.pathname;
+        const search = new URLSearchParams(window.location.search);
+        const query = search.get('v');
+        
+        if (path.includes('/-/login')) {
+            window.toggleView(false, true);
+        } else if (path.includes('/-/signup')) {
+            window.toggleView(true, true);
+        } else if (path.includes('/-/verify')) {
+            // Handled by auth listener
+        } else if (path.includes('/-/home')) {
+            window.showSection('home', true);
+        } else if (path.includes('/-/dashboard')) {
+            window.showSection('dashboard', true);
+            if (query) {
+                const searchInput = document.getElementById('musicSearchInput');
+                if (searchInput) searchInput.value = query;
+                setTimeout(() => window.searchMusic(query, true), 1000);
+            }
+        } else if (path.includes('/-/profile')) {
+            window.showSection('profile', true);
+        } else if (path.includes('/-/settings')) {
+            window.showSection('settings', true);
+        } else if (path.includes('/-/status')) {
+            window.handleGenericAction('Node Status');
+        }
+    });
+
     window.handleGenericAction = (action) => {
+        window.updateRoute('status');
         alert(`${action} functionality coming soon! This button is now linked.`);
     };
 
@@ -1293,14 +1372,13 @@
     window.handleLogout = async () => {
         try {
             await signOut(auth);
-            // Reload to ensure a clean state
+            window.updateRoute('login');
             window.location.reload();
         } catch (error) {
             console.error("Logout Error:", error);
             alert("Error signing out. Please try again.");
         }
     };
-    window.handlePremium = () => alert("Redirecting to Premium Upgrade page...");
     window.handleUsernameChange = () => {
         const newName = prompt("Enter your new display name:");
         if (newName) {
@@ -1404,8 +1482,12 @@
     };
 
     // --- SEARCH LOGIC (SYSTEMATIC ITERATION) ---
-    window.searchMusic = async function(query) {
+    window.searchMusic = async function(query, skipPush = false) {
         if (!query) return;
+        
+        if (!skipPush) {
+            window.updateRoute('dashboard', query);
+        }
         
         const resultsEl = document.getElementById('musicResults');
         if (!resultsEl) return;
