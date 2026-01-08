@@ -841,28 +841,67 @@
 
         /* Video logic for mobile */
         #ytPlayerContainer.in-mobile-overlay {
-            position: fixed !important;
-            top: 100px !important;
-            left: 50% !important;
-            transform: translateX(-50%) !important;
-            width: 90% !important;
-            max-width: 340px !important;
-            aspect-ratio: 16/9 !important;
-            z-index: 2100 !important;
-            transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1) !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100% !important;
+            height: 100% !important;
+            transform: none !important;
+            z-index: 10 !important;
+            transition: opacity 0.4s ease, transform 0.4s ease !important;
             opacity: 1 !important;
             visibility: visible !important;
             border-radius: 12px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             display: block !important;
-            height: auto !important;
+            overflow: hidden;
+            background: #000;
         }
 
         #ytPlayerContainer.in-mobile-overlay.hidden-tab {
             opacity: 0 !important;
             visibility: hidden !important;
             pointer-events: none !important;
-            transform: translate(-50%, 20px) scale(0.95) !important;
+            transform: scale(0.95) !important;
+        }
+
+        .video-fallback-ui {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #1a1a1c;
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            text-align: center;
+            z-index: 5;
+            border-radius: 12px;
+        }
+
+        .video-fallback-ui i {
+            font-size: 2.5rem;
+            color: #fda4af;
+            margin-bottom: 15px;
+        }
+
+        .video-fallback-ui p {
+            color: #e4e4e7;
+            font-size: 0.9rem;
+            margin-bottom: 15px;
+        }
+
+        .video-fallback-ui .retry-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
         }
 
         /* Ensure parent doesn't hide it on mobile */
@@ -1387,7 +1426,15 @@
                 <div id="mobileArtView" class="mobile-art-container">
                     <img id="mobilePlayerThumb" src="" alt="Album Art">
                 </div>
-                <!-- Video will be positioned over this area in JS -->
+                <!-- Video placeholder for better responsive handling -->
+                <div id="videoContainerWrapper" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none;">
+                    <!-- Desktop container will be moved here in JS -->
+                    <div id="videoFallback" class="video-fallback-ui">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>Video failed to load. Check your connection or the video availability.</p>
+                        <button class="retry-btn" onclick="retryVideo()">Retry Loading</button>
+                    </div>
+                </div>
             </div>
 
             <div class="mobile-info-section">
@@ -1673,13 +1720,17 @@
     window.toggleMobilePlayer = (show) => {
         const overlay = document.getElementById('mobilePlayerOverlay');
         const desktopContainer = document.getElementById('ytPlayerContainer');
+        const mobileMediaWrapper = document.getElementById('videoContainerWrapper');
 
         if (show) {
             overlay.classList.add('active');
             document.body.style.overflow = 'hidden';
             
-            if (desktopContainer) {
+            if (desktopContainer && mobileMediaWrapper) {
+                // Move the container inside the mobile wrapper for correct positioning
+                mobileMediaWrapper.appendChild(desktopContainer);
                 desktopContainer.classList.add('in-mobile-overlay');
+                
                 // Check current tab
                 const videoBtn = document.getElementById('mobileTabVideo');
                 if (videoBtn && videoBtn.classList.contains('active')) {
@@ -1704,14 +1755,13 @@
             setTimeout(() => {
                 if (!overlay.classList.contains('active')) {
                     if (desktopContainer) {
+                        // Move back to desktop location
+                        const desktopParent = document.getElementById('playerSection');
+                        if (desktopParent) {
+                            desktopParent.appendChild(desktopContainer);
+                        }
                         desktopContainer.classList.remove('in-mobile-overlay');
                         desktopContainer.classList.remove('hidden-tab');
-                        // Reset inline styles
-                        desktopContainer.style.top = '';
-                        desktopContainer.style.left = '';
-                        desktopContainer.style.width = '';
-                        desktopContainer.style.height = '';
-                        desktopContainer.style.transform = '';
                     }
                 }
             }, 600);
@@ -2078,16 +2128,53 @@
         });
     }
 
+    window.retryVideo = () => {
+        const iframe = document.getElementById('adfree-player');
+        const fallback = document.getElementById('videoFallback');
+        if (iframe && iframe.src) {
+            const currentSrc = iframe.src;
+            iframe.src = ''; // Clear
+            setTimeout(() => {
+                iframe.src = currentSrc; // Reload
+                if (fallback) fallback.style.display = 'none';
+            }, 100);
+        }
+    };
+
+    function checkIframeLoading() {
+        const iframe = document.getElementById('adfree-player');
+        const fallback = document.getElementById('videoFallback');
+        
+        // Use a timeout to detect if the iframe fails to communicate/load
+        // Since we can't always catch 404s/CORS on iframes directly,
+        // we check if the YouTube API actually ready state changes.
+        const loadTimeout = setTimeout(() => {
+            if (player && typeof player.getPlayerState !== 'function' && fallback) {
+                console.warn("Iframe loading took too long, showing fallback.");
+                fallback.style.display = 'flex';
+            }
+        }, 8000); // 8 second timeout
+
+        iframe.onload = () => {
+            clearTimeout(loadTimeout);
+            if (fallback) fallback.style.display = 'none';
+            console.log("Iframe DOM loaded successfully.");
+        };
+    }
+
     window.playYouTubeVideo = async function(videoId, title, artist, thumb) {
         const playerBar = document.getElementById('musicPlayerBar');
         playerBar.style.display = 'flex';
         
-        // Update Desktop UI
+        // Hide fallback on new song
+        const fallback = document.getElementById('videoFallback');
+        if (fallback) fallback.style.display = 'none';
+
+        // Update UI...
         document.getElementById('playerTitle').textContent = title;
         document.getElementById('playerArtist').textContent = artist;
         document.getElementById('playerThumb').src = thumb;
 
-        // Update Mobile UI
         const mobileTitle = document.getElementById('mobilePlayerTitle');
         if (mobileTitle) {
             mobileTitle.textContent = title;
@@ -2098,7 +2185,6 @@
         document.getElementById('mobilePlayerArtist').textContent = artist;
         document.getElementById('mobilePlayerThumb').src = thumb;
         
-        // Auto-expand player (desktop only)
         if (window.innerWidth > 768) {
             const section = document.getElementById('playerSection');
             const icon = document.getElementById('togglePlayerIcon');
@@ -2108,19 +2194,20 @@
             }
         }
 
-        // Check marquee after a short delay to allow DOM to update
         setTimeout(() => {
             window.checkMarquee();
         }, 100);
 
-        // Update iframe src directly as a fallback and to ensure the player loads
+        // Update iframe src
         const iframe = document.getElementById('adfree-player');
         const videoSrc = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&modestbranding=1&rel=0&vq=hd720`;
+        
         if (iframe && iframe.src !== videoSrc) {
             iframe.src = videoSrc;
+            checkIframeLoading();
         }
 
-        // Initialize or Update YouTube Player API object
+        // YouTube Player Initialization
         if (!player || typeof player.loadVideoById !== 'function') {
             player = new YT.Player('adfree-player', {
                 videoId: videoId,
@@ -2136,6 +2223,11 @@
                     'onReady': (e) => {
                         e.target.playVideo();
                         startProgressLoop();
+                        if (fallback) fallback.style.display = 'none';
+                    },
+                    'onError': (e) => {
+                        console.error("YouTube Player Error:", e.data);
+                        if (fallback) fallback.style.display = 'flex';
                     }
                 }
             });
@@ -2158,6 +2250,10 @@
                         'onReady': (e) => {
                             e.target.playVideo();
                             startProgressLoop();
+                            if (fallback) fallback.style.display = 'none';
+                        },
+                        'onError': (e) => {
+                            if (fallback) fallback.style.display = 'flex';
                         }
                     }
                 });
