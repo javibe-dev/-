@@ -1371,10 +1371,11 @@
     // Helper to fetch through multiple CORS proxies
     async function fetchWithProxy(url, type = 'text', method = 'GET', body = null) {
         const proxies = [
-            `https://corsproxy.org/?${encodeURIComponent(url)}`,
             `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+            `https://api.codetabs.com/v1/proxy?url=${encodeURIComponent(url)}`,
+            `https://corsproxy.io/?${encodeURIComponent(url)}`,
             `https://cors-proxy.org/?url=${encodeURIComponent(url)}`,
-            `https://corsproxy.io/?${encodeURIComponent(url)}`
+            `https://corsproxy.org/?${encodeURIComponent(url)}` // Moved to end (often blocks)
         ];
 
         for (const proxy of proxies) {
@@ -1396,15 +1397,26 @@
                 const response = await fetch(proxy, options);
                 clearTimeout(timeoutId);
                 
-                if (!response.ok) continue;
-                
-                if (proxy.includes('allorigins.win')) {
-                    const data = await response.json();
-                    const content = data.contents;
-                    return type === 'json' ? JSON.parse(content) : content;
+                if (!response.ok) {
+                    console.warn(`JaVibe: Proxy ${proxy} returned status ${response.status}`);
+                    continue;
                 }
                 
-                return type === 'json' ? await response.json() : await response.text();
+                let result;
+                if (proxy.includes('allorigins.win')) {
+                    const data = await response.json();
+                    result = data.contents;
+                } else {
+                    result = await response.text();
+                }
+
+                // SECURITY/BLOCK CHECK: Some proxies return 200 OK but with "Forbidden" in the body
+                if (typeof result === 'string' && (result.includes('Forbidden') || result.includes('access denied') || result.includes('Protected by go-away'))) {
+                    console.warn(`JaVibe: Proxy ${proxy} returned an administrative block message.`);
+                    continue;
+                }
+                
+                return type === 'json' ? JSON.parse(result) : result;
             } catch (err) {
                 console.warn(`JaVibe: Proxy ${proxy} failed`, err);
             }
@@ -1440,9 +1452,10 @@
         // NEW STRATEGY: Use Piped/Invidious APIs DIRECTLY as primary. 
         // These are CORS-enabled and much more reliable for searching.
         const apiInstances = [
-            { url: 'https://pipedapi.kavin.rocks', type: 'piped' },
             { url: 'https://pipedapi.moomoo.me', type: 'piped' },
             { url: 'https://api.piped.victr.me', type: 'piped' },
+            { url: 'https://pipedapi.mha.fi', type: 'piped' },
+            { url: 'https://pipedapi.adminforge.de', type: 'piped' },
             { url: 'https://inv.zzls.xyz', type: 'invidious' },
             { url: 'https://invidious.projectsegfau.lt', type: 'invidious' },
             { url: 'https://yewtu.be', type: 'invidious' }
