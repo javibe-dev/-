@@ -860,13 +860,6 @@
                     </div>
                 </div>
 
-                <div class="nav-section" id="playerSection" style="margin-top: auto; padding-top: 20px;">
-                    <p class="nav-label">Player</p>
-                    <div id="ytPlayerContainer" style="width: 100%; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--glass-border);">
-                        <div id="youtube-player"></div>
-                    </div>
-                </div>
-
                 <div class="nav-section">
                     <p class="nav-label">Account</p>
                     <div class="nav-item" onclick="showSection('profile')">
@@ -964,18 +957,27 @@
                     </div>
                 </div>
 
-                <!-- Music Player Bar -->
-                <div id="musicPlayerBar" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10, 10, 12, 0.98); backdrop-filter: blur(15px); border-top: 1px solid rgba(255, 255, 255, 0.1); z-index: 1000; flex-direction: column;">
-                    <div id="playerMetadata" style="padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;">
-                        <div style="display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0;">
-                            <img id="playerThumb" src="" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
-                            <div style="min-width: 0;">
-                                <h4 id="playerTitle" style="margin: 0; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white;"></h4>
-                                <p id="playerArtist" style="margin: 0; font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></p>
-                            </div>
-                        </div>
-                        <button onclick="togglePlayer()" class="icon-btn" style="color: white; font-size: 1.2rem;"><i class="fas fa-chevron-up" id="togglePlayerIcon"></i></button>
+                </div>
+            </div>
+
+            <!-- Music Player Bar (Global) -->
+            <div id="musicPlayerBar" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10, 10, 12, 0.98); backdrop-filter: blur(15px); border-top: 1px solid rgba(255, 255, 255, 0.1); z-index: 1000; flex-direction: column;">
+                <!-- Expanded Video Container -->
+                <div id="playerSection" style="display: none; width: 100%; max-width: 800px; margin: 0 auto; padding: 20px;">
+                    <div id="ytPlayerContainer" style="width: 100%; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--glass-border);">
+                        <div id="youtube-player"></div>
                     </div>
+                </div>
+                
+                <div id="playerMetadata" style="padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0;">
+                        <img id="playerThumb" src="" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
+                        <div style="min-width: 0;">
+                            <h4 id="playerTitle" style="margin: 0; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white;"></h4>
+                            <p id="playerArtist" style="margin: 0; font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></p>
+                        </div>
+                    </div>
+                    <button onclick="togglePlayer()" class="icon-btn" style="color: white; font-size: 1.2rem;"><i class="fas fa-chevron-up" id="togglePlayerIcon"></i></button>
                 </div>
             </div>
 
@@ -1288,7 +1290,8 @@
     }
 
     // --- YOUTUBE CONFIG ---
-    const YT_API_KEY = "YOUR_YOUTUBE_API_KEY"; // Replace with your actual key
+    // Using the Firebase API Key as a fallback, but users should ideally use a dedicated YouTube Data API v3 key
+    const YT_API_KEY = "AIzaSyApKLZIjUZSQnKJCngvp0KZPYJf3zBNaCc"; 
 
     window.onYouTubeIframeAPIReady = () => {
         player = new YT.Player('youtube-player', {
@@ -1354,7 +1357,11 @@
             });
         } catch (error) {
             console.error("Search Error:", error);
-            resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">Error: ${error.message}</p>`;
+            let msg = error.message;
+            if (msg.includes("API key not valid")) {
+                msg = "YouTube API Key is invalid. Please ensure the key in YT_API_KEY has 'YouTube Data API v3' enabled in Google Cloud Console.";
+            }
+            resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">Error: ${msg}</p>`;
         } finally {
             btn.disabled = false;
             btn.textContent = "Search Music";
@@ -1373,7 +1380,8 @@
         document.getElementById('playerThumb').src = thumb;
         
         player.loadVideoById(videoId);
-        document.getElementById('playerSection').style.display = 'block';
+        // Show the bar, but keep the video section collapsed by default for a better music experience
+        document.getElementById('musicPlayerBar').style.display = 'flex';
     }
 
     window.togglePlayPause = () => {
@@ -1394,7 +1402,7 @@
     window.togglePlayer = () => {
         const playerSection = document.getElementById('playerSection');
         const icon = document.getElementById('togglePlayerIcon');
-        if (playerSection.style.display === 'none') {
+        if (playerSection.style.display === 'none' || playerSection.style.display === '') {
             playerSection.style.display = 'block';
             icon.className = 'fas fa-chevron-down';
         } else {
