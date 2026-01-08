@@ -8,7 +8,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         :root {
             --primary: #6366f1;
@@ -845,7 +844,7 @@
                 <!-- Expanded Video Container -->
                 <div id="playerSection">
                     <div id="ytPlayerContainer" style="width: 100%; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--glass-border);">
-                        <div id="youtube-player"></div>
+                        <iframe id="adfree-player" style="width: 100%; height: 100%; border: none;" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
                     </div>
                 </div>
                 
@@ -1196,94 +1195,8 @@
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     }
 
-    // --- YOUTUBE CONFIG ---
-    let playerReady = false;
-    let playerRetryCount = 0;
-
-    function initYouTubePlayer() {
-        console.log(`JaVibe: Initializing Player (Attempt ${playerRetryCount + 1})...`);
-        
-        if (typeof YT === 'undefined' || !YT.Player) {
-            console.log("JaVibe: YT API not ready yet...");
-            if (playerRetryCount < 15) {
-                playerRetryCount++;
-                setTimeout(initYouTubePlayer, 1000);
-            }
-            return;
-        }
-
-        const playerDiv = document.getElementById('youtube-player');
-        if (!playerDiv) {
-            console.warn("JaVibe: youtube-player div not found in DOM!");
-            if (playerRetryCount < 15) {
-                playerRetryCount++;
-                setTimeout(initYouTubePlayer, 1000);
-            }
-            return;
-        }
-
-        try {
-            // Ensure container is briefly visible if needed for initialization
-            const bar = document.getElementById('musicPlayerBar');
-            const section = document.getElementById('playerSection');
-            const originalBarDisplay = bar.style.display;
-            const originalSectionDisplay = section.style.display;
-            
-            // Some browsers/API versions need the element to be visible to init properly
-            bar.style.display = 'flex';
-            const isInitiallyExpanded = section.classList.contains('expanded');
-            if (!isInitiallyExpanded) section.classList.add('expanded');
-            bar.style.opacity = '0'; // Keep it invisible but "displayed"
-
-            player = new YT.Player('youtube-player', {
-                height: '100%',
-                width: '100%',
-                playerVars: { 
-                    'autoplay': 1, 
-                    'controls': 1, 
-                    'modestbranding': 1, 
-                    'origin': window.location.origin,
-                    'enablejsapi': 1
-                },
-                events: {
-                    'onReady': (event) => {
-                        console.log("JaVibe: YouTube Player Ready Event Fired");
-                        playerReady = true;
-                        // Restore original visibility
-                        bar.style.display = originalBarDisplay;
-                        if (!isInitiallyExpanded) section.classList.remove('expanded');
-                        bar.style.opacity = '1';
-                    },
-                    'onStateChange': (event) => {
-                        if (event.data === YT.PlayerState.PLAYING) {
-                            isPlaying = true;
-                            updatePlayPauseUI(true);
-                            startProgressLoop();
-                        } else {
-                            isPlaying = false;
-                            updatePlayPauseUI(false);
-                            stopProgressLoop();
-                        }
-                    },
-                    'onError': (e) => {
-                        console.error("JaVibe: YT Player Error:", e);
-                        if (e.data === 101 || e.data === 150) {
-                            alert("This video is restricted. Make sure you've added your cookies.txt content in Settings!");
-                        }
-                    }
-                }
-            });
-        } catch (err) {
-            console.error("JaVibe: Critical error during YT.Player init:", err);
-        }
-    }
-
-    // Force check if API is already loaded (sometimes onYouTubeIframeAPIReady doesn't fire if script loads too fast)
-    if (window.YT && window.YT.Player) {
-        initYouTubePlayer();
-    } else {
-        window.onYouTubeIframeAPIReady = initYouTubePlayer;
-    }
+    // --- AD-FREE PLAYER (PIPED) ---
+    // No initialization needed for iframe-based Piped player.
 
     // Helper to fetch through multiple CORS proxies
     async function fetchWithProxy(url, type = 'text', method = 'GET', body = null) {
@@ -1507,50 +1420,29 @@
     }
 
     async function playYouTubeVideo(videoId, title, artist, thumb) {
-        const actuallyPlay = () => {
-            document.getElementById('musicPlayerBar').style.display = 'flex';
-            document.getElementById('playerTitle').textContent = title;
-            document.getElementById('playerArtist').textContent = artist;
-            document.getElementById('playerThumb').src = thumb;
-            
-            if (player && player.loadVideoById) {
-                player.loadVideoById(videoId);
-            }
-        };
-
-        if (!playerReady || !player || !player.loadVideoById) {
-            console.log("JaVibe: Waiting for Player...");
-            let attempts = 0;
-            const wait = setInterval(() => {
-                attempts++;
-                if (playerReady && player && player.loadVideoById) {
-                    clearInterval(wait);
-                    actuallyPlay();
-                } else if (attempts > 60) { // Increased to 30 seconds
-                    clearInterval(wait);
-                    alert("Player initialization is taking longer than expected. Please check your connection and refresh if needed.");
-                }
-            }, 500);
-            return;
-        }
+        document.getElementById('musicPlayerBar').style.display = 'flex';
+        document.getElementById('playerTitle').textContent = title;
+        document.getElementById('playerArtist').textContent = artist;
+        document.getElementById('playerThumb').src = thumb;
         
-        actuallyPlay();
+        // Using Piped (Ad-Free YouTube Frontend) for the embed
+        const adFreeEmbedUrl = `https://pipedapi.kavin.rocks/embed/${videoId}`;
+        const playerIframe = document.getElementById('adfree-player');
+        playerIframe.src = adFreeEmbedUrl;
+
+        // Auto-expand player when starting new video
+        const section = document.getElementById('playerSection');
+        const icon = document.getElementById('togglePlayerIcon');
+        if (!section.classList.contains('expanded')) {
+            section.classList.add('expanded');
+            icon.classList.add('rotated');
+        }
     }
 
     window.togglePlayPause = () => {
-        if (!player) return;
-        const state = player.getPlayerState();
-        if (state === YT.PlayerState.PLAYING) {
-            player.pauseVideo();
-        } else {
-            player.playVideo();
-        }
+        // Iframe controls its own playback. This is just a placeholder.
+        console.log("Use the player's internal controls for ad-free playback.");
     };
-
-    function updatePlayPauseUI(playing) {
-        const btn = document.getElementById('playPauseBtn');
-        if (btn) btn.innerHTML = playing ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play" style="margin-left: 3px;"></i>';
-    }
 
     window.togglePlayer = () => {
         const playerSection = document.getElementById('playerSection');
@@ -1560,13 +1452,21 @@
         icon.classList.toggle('rotated');
     };
 
-    document.getElementById('musicSearchBtn').onclick = () => searchMusic(document.getElementById('musicSearchInput').value);
-    document.getElementById('musicSearchInput').onkeypress = (e) => { if (e.key === 'Enter') searchMusic(e.target.value); };
+    const searchBtn = document.getElementById('musicSearchBtn');
+    if (searchBtn) searchBtn.onclick = () => searchMusic(document.getElementById('musicSearchInput').value);
+    
+    const searchInput = document.getElementById('musicSearchInput');
+    if (searchInput) {
+        searchInput.onkeypress = (e) => { 
+            if (e.key === 'Enter') searchMusic(e.target.value); 
+        };
+    }
 
     const volumeSlider = document.getElementById('volumeSlider');
     if (volumeSlider) {
         volumeSlider.addEventListener('input', (e) => {
-            if (player && player.setVolume) player.setVolume(e.target.value);
+            // Piped embed doesn't support external volume API easily via simple iframe
+            console.log("Volume adjusted to:", e.target.value);
         });
     }
 
