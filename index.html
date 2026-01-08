@@ -8,7 +8,7 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
-    <script src="https://sdk.scdn.co/spotify-player.js"></script>
+    <script src="https://www.youtube.com/iframe_api"></script>
     <style>
         :root {
             --primary: #6366f1;
@@ -132,6 +132,96 @@
         }
 
         .show-signup .form-wrapper { transform: translateX(-50%); }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+
+        .music-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .music-card:hover {
+            transform: translateY(-5px);
+            background: rgba(255, 255, 255, 0.06);
+            border-color: rgba(99, 102, 241, 0.3);
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .music-card img {
+            width: 100%;
+            aspect-ratio: 16/9;
+            object-fit: cover;
+            transition: transform 0.5s ease;
+        }
+
+        .music-card:hover img {
+            transform: scale(1.05);
+        }
+
+        .music-card-content {
+            padding: 12px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .music-card h5 {
+            margin: 0 0 4px;
+            font-size: 0.9rem;
+            line-height: 1.4;
+            color: white;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+
+        .music-card p {
+            margin: 0;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 640px) {
+            .results-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+                gap: 15px;
+            }
+            .dashboard-title {
+                font-size: 1.5rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .results-grid {
+                grid-template-columns: 1fr;
+            }
+            .music-card {
+                flex-direction: row;
+                height: 100px;
+            }
+            .music-card img {
+                width: 140px;
+                height: 100%;
+                aspect-ratio: auto;
+            }
+            .music-card-content {
+                padding: 10px;
+            }
+        }
 
         /* --- DASHBOARD VIEW STYLES --- */
         #dashboardView {
@@ -766,23 +856,14 @@
                         <div class="nav-item-content"><i class="fas fa-home"></i> Home</div>
                     </div>
                     <div class="nav-item" onclick="showSection('dashboard')">
-                        <div class="nav-item-content"><i class="fab fa-spotify"></i> Spotify</div>
+                        <div class="nav-item-content"><i class="fas fa-music"></i> Music</div>
                     </div>
                 </div>
 
-                <div class="nav-section">
-                    <p class="nav-label">Connect</p>
-                    <div id="spotifyConnectBtn" class="nav-item">
-                        <div class="nav-item-content">
-                            <i class="fab fa-spotify" style="color: #1DB954;"></i>
-                            <span>Connect Spotify</span>
-                        </div>
-                    </div>
-                    <div id="spotifyUser" class="nav-item" style="display: none; pointer-events: none;">
-                        <div class="nav-item-content">
-                            <img id="spotifyUserImg" src="" style="width: 20px; height: 20px; border-radius: 50%; display: none;">
-                            <span id="spotifyUserName" style="color: #1DB954; font-weight: 600;">Connected</span>
-                        </div>
+                <div class="nav-section" id="playerSection" style="margin-top: auto; padding-top: 20px;">
+                    <p class="nav-label">Player</p>
+                    <div id="ytPlayerContainer" style="width: 100%; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--glass-border);">
+                        <div id="youtube-player"></div>
                     </div>
                 </div>
 
@@ -828,48 +909,7 @@
                     <h1 class="dashboard-title"><i class="fas fa-home" style="color: #3b82f6; font-size: 1.8rem;"></i> Home 🎄</h1>
                     <p class="dashboard-subtitle">✨ Welcome to your personal space.</p>
                 </div>
-                <!-- ... existing content ... -->
-            </div>
-
-            <div id="dashboardSection" style="display: none;">
-                <div class="dashboard-header">
-                    <h1 class="dashboard-title"><i class="fab fa-spotify" style="color: #1DB954; font-size: 1.8rem;"></i> Spotify Search</h1>
-                    <p class="dashboard-subtitle">🎵 Explore millions of tracks and albums from Spotify.</p>
-                </div>
-
-                <div class="search-container" style="margin-bottom: 2rem;">
-                    <div style="position: relative; display: flex; gap: 10px;">
-                        <input type="text" id="spotifySearchInput" placeholder="Search for tracks, artists, or albums..." style="padding-right: 45px;">
-                        <button id="spotifySearchBtn" class="primary-btn" style="white-space: nowrap;">Search</button>
-                    </div>
-                </div>
-
-                <div id="spotifyResults" class="results-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
-                    <!-- Results will appear here -->
-                    <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">
-                        <i class="fab fa-spotify" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.2;"></i>
-                        <p>Connect Spotify and search for something to see results</p>
-                    </div>
-                </div>
-
-                <!-- Music Player Bar (Spotify-first) -->
-                <div id="musicPlayerBar" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10, 10, 12, 0.98); backdrop-filter: blur(15px); border-top: 1px solid rgba(255, 255, 255, 0.1); z-index: 1000; flex-direction: column;">
-                    <!-- Spotify Embed Container -->
-                    <div id="youtube-player-container" style="width: 100%; height: 80px; overflow: hidden; background: #000;"></div>
-                    
-                    <!-- Metadata & Controls (Optional fallback) -->
-                    <div id="playerMetadata" style="display: none; padding: 12px 24px; align-items: center; justify-content: space-between;">
-                        <div style="display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0;">
-                            <img id="playerThumb" src="" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
-                            <div style="min-width: 0;">
-                                <h4 id="playerTitle" style="margin: 0; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white;"></h4>
-                                <p id="playerArtist" style="margin: 0; font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></p>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
+                
                 <div class="discord-bar" style="background: #111113; border: 1px solid rgba(255, 255, 255, 0.05); color: white; padding: 12px 16px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 2rem;">
                     <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
                         <div class="discord-icon-container" style="background: #5865f2; width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
@@ -903,6 +943,42 @@
                 </div>
             </div>
 
+            <div id="dashboardSection" style="display: none;">
+                <div class="dashboard-header">
+                    <h1 class="dashboard-title"><i class="fas fa-search" style="color: var(--primary); font-size: 1.8rem;"></i> Music Search</h1>
+                    <p class="dashboard-subtitle">🎵 Explore millions of tracks and videos from YouTube.</p>
+                </div>
+
+                <div class="search-container" style="margin-bottom: 2rem;">
+                    <div style="position: relative; display: flex; gap: 10px;">
+                        <input type="text" id="musicSearchInput" placeholder="Search for tracks, artists, or albums..." style="padding-right: 45px;">
+                        <button id="musicSearchBtn" class="primary-btn" style="white-space: nowrap;">Search Music</button>
+                    </div>
+                </div>
+
+                <div id="musicResults" class="results-grid">
+                    <!-- Results will appear here -->
+                    <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">
+                        <i class="fas fa-music" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.2;"></i>
+                        <p>Search for something to see results</p>
+                    </div>
+                </div>
+
+                <!-- Music Player Bar -->
+                <div id="musicPlayerBar" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10, 10, 12, 0.98); backdrop-filter: blur(15px); border-top: 1px solid rgba(255, 255, 255, 0.1); z-index: 1000; flex-direction: column;">
+                    <div id="playerMetadata" style="padding: 12px 24px; display: flex; align-items: center; justify-content: space-between;">
+                        <div style="display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0;">
+                            <img id="playerThumb" src="" style="width: 40px; height: 40px; border-radius: 8px; object-fit: cover;">
+                            <div style="min-width: 0;">
+                                <h4 id="playerTitle" style="margin: 0; font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white;"></h4>
+                                <p id="playerArtist" style="margin: 0; font-size: 0.7rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></p>
+                            </div>
+                        </div>
+                        <button onclick="togglePlayer()" class="icon-btn" style="color: white; font-size: 1.2rem;"><i class="fas fa-chevron-up" id="togglePlayerIcon"></i></button>
+                    </div>
+                </div>
+            </div>
+
             <div id="profileSection" style="display: none;">
                 <h2>User Profile</h2>
                 <div class="welcome-card" style="margin-top: 1.5rem;">
@@ -915,7 +991,16 @@
             <div id="settingsSection" style="display: none;">
                 <h2>Account Settings</h2>
                 <div class="welcome-card" style="margin-top: 1.5rem;">
-                    <p>Settings functionality is currently in development.</p>
+                    <h3>YouTube Cookies (Hardcoded: cookies.txt)</h3>
+                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
+                        The system is currently reading from <code>cookies.txt</code> in the project root. You can also manually override them below.
+                    </p>
+                    <textarea id="cookieInput" placeholder="Loading cookies.txt..." style="width: 100%; height: 150px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; color: white; padding: 10px; font-family: monospace; font-size: 0.8rem; margin-bottom: 10px;"></textarea>
+                    <button id="saveCookiesBtn" class="primary-btn" style="font-size: 0.85rem;">Override & Save</button>
+                    <p id="cookieStatus" style="font-size: 0.8rem; margin-top: 10px;"></p>
+                </div>
+                <div class="welcome-card" style="margin-top: 1.5rem;">
+                    <p>Other settings functionality is currently in development.</p>
                 </div>
             </div>
         </main>
@@ -1002,7 +1087,8 @@
     const headerUsername = document.getElementById('headerUsername');
     const avatarLetter = document.getElementById('avatarLetter');
     const sidebar = document.getElementById('sidebar');
-// menuToggle already declared above; no need to re-declare
+    const menuToggle = document.getElementById('menuToggle');
+    const collapseBtn = document.getElementById('collapseBtn');
 
     // Mobile menu toggle
     if (menuToggle && sidebar) {
@@ -1089,12 +1175,12 @@
     });
 
     // Event listeners for switching
-    document.getElementById('toSignup').onclick = () => toggleView(true);
-    document.getElementById('toLogin').onclick = () => toggleView(false);
+    const toSignup = document.getElementById('toSignup');
+    const toLogin = document.getElementById('toLogin');
+    if (toSignup) toSignup.onclick = () => toggleView(true);
+    if (toLogin) toLogin.onclick = () => toggleView(false);
 
-    // --- SIDEBAR COLLAPSE LOGIC ---
-    const collapseBtn = document.getElementById('collapseBtn');
-    const menuToggle = document.getElementById('menuToggle');
+    
     // sidebar is already declared above; no need to redeclare
     
     const handleSidebarToggle = () => {
@@ -1139,8 +1225,6 @@
     window.handleLogout = async () => {
         try {
             await signOut(auth);
-            // Clear any local data if needed
-            localStorage.removeItem('spotify_access_token');
             // Reload to ensure a clean state
             window.location.reload();
         } catch (error) {
@@ -1162,17 +1246,14 @@
     };
 
     // --- PLAYER STATE ---
-    let player; // YouTube Player
-    let audioPlayer = new Audio(); // Spotify/Audio Player
+    let player = null; // YouTube Player
     let isPlaying = false;
     let progressInterval;
 
     function startProgressLoop() {
         if (progressInterval) clearInterval(progressInterval);
         progressInterval = setInterval(() => {
-            if (audioPlayer.src && !audioPlayer.paused) {
-                updateProgressBar(audioPlayer.currentTime, audioPlayer.duration);
-            } else if (player && player.getCurrentTime && isPlaying) {
+            if (player && player.getCurrentTime && isPlaying) {
                 updateProgressBar(player.getCurrentTime(), player.getDuration());
             }
         }, 500);
@@ -1206,543 +1287,173 @@
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     }
 
-    // --- DESKTOP SPOOFING FOR MOBILE ---
-    function forceDesktopMode() {
-        const BASE_W = 1280;
-        const BASE_H = 720;
-        if (window.innerWidth < BASE_W) {
-            let viewport = document.querySelector('meta[name="viewport"]');
-            if (!viewport) {
-                viewport = document.createElement('meta');
-                viewport.name = "viewport";
-                document.head.appendChild(viewport);
-            }
-            viewport.setAttribute('content', `width=${BASE_W}, initial-scale=1, maximum-scale=1, user-scalable=no`);
+    // --- YOUTUBE CONFIG ---
+    const YT_API_KEY = "YOUR_YOUTUBE_API_KEY"; // Replace with your actual key
 
-            const screenWidth = window.screen.width;
-            const screenHeight = window.screen.height;
-            const scale = Math.min(screenWidth / BASE_W, screenHeight / BASE_H);
-        
-        // Force the viewport to match our BASE_W to prevent internal reflow
-        document.documentElement.style.width = `${BASE_W}px`;
-        document.documentElement.style.height = `${BASE_H}px`;
-        document.documentElement.style.overflow = 'hidden'; // FIX GHOST SCROLL
-        document.documentElement.style.position = 'fixed'; // FIX GHOST SCROLL
-        
-        document.body.style.width = `${BASE_W}px`;
-        document.body.style.height = `${BASE_H}px`;
-        document.body.style.overflow = 'hidden'; // FIX GHOST SCROLL
-        document.body.style.position = 'fixed'; // FIX GHOST SCROLL
-        document.body.style.transform = `scale(${scale})`;
-        document.body.style.transformOrigin = '0 0';
-        document.body.style.margin = '0';
-        document.body.style.padding = '0';
-        document.body.style.pointerEvents = 'auto'; // FIX: Ensure clicks work
-        
-        console.log(`Micro-Desktop Active: Scaled to ${scale.toFixed(2)}`);
-        }
-    }
-    forceDesktopMode();
-    // Re-run on orientation change
-    window.addEventListener('resize', forceDesktopMode);
-    window.addEventListener('orientationchange', () => setTimeout(forceDesktopMode, 200));
-
-    // --- SPOTIFY INTEGRATION (PKCE FLOW) ---
-    let SPOTIFY_CLIENT_ID = localStorage.getItem('spotify_client_id') || "55afa568f2f74d2f8235de04285fa817";
-    
-    // REDIRECT_URI fix for GitHub Pages
-    const REDIRECT_URI = (window.location.hostname === 'javibe-dev.github.io')
-        ? "https://javibe-dev.github.io/-/"
-        : (window.location.protocol === 'file:') 
-            ? "http://127.0.0.1:5500/index.html" 
-            : window.location.origin + window.location.pathname;
-
-    const SCOPES = "user-read-private user-read-email user-library-read streaming user-modify-playback-state user-read-playback-state";
-    
-    let spotifyAccessToken = localStorage.getItem('spotify_access_token');
-    let spotifyPlayer = null;
-    let spotifyDeviceId = null;
-
-    // Initialize Spotify Web Playback SDK
-    window.onSpotifyWebPlaybackSDKReady = () => {
-        if (spotifyAccessToken) {
-            initSpotifyPlayer();
-        }
-    };
-
-    function initSpotifyPlayer() {
-        if (spotifyPlayer) return;
-
-        spotifyPlayer = new Spotify.Player({
-            name: 'JaVibe Player',
-            getOAuthToken: cb => { cb(spotifyAccessToken); },
-            volume: 0.5
-        });
-
-        // Error handling
-        spotifyPlayer.addListener('initialization_error', ({ message }) => { console.error(message); });
-        spotifyPlayer.addListener('authentication_error', ({ message }) => { console.error(message); handleLogout(); });
-        spotifyPlayer.addListener('account_error', ({ message }) => { console.error(message); });
-        spotifyPlayer.addListener('playback_error', ({ message }) => { console.error(message); });
-
-        // Playback status updates
-        spotifyPlayer.addListener('player_state_changed', state => {
-            if (!state) return;
-            // Update UI if needed based on state
-        });
-
-        // Ready
-        spotifyPlayer.addListener('ready', ({ device_id }) => {
-            console.log('Ready with Device ID', device_id);
-            spotifyDeviceId = device_id;
-        });
-
-        // Not Ready
-        spotifyPlayer.addListener('not_ready', ({ device_id }) => {
-            console.log('Device ID has gone offline', device_id);
-        });
-
-        // Connect to the player!
-        spotifyPlayer.connect();
-    }
-
-    async function getSpotifyDevices() {
-        if (!spotifyAccessToken) return [];
-        try {
-            const response = await fetch('https://api.spotify.com/v1/me/player/devices', {
-                headers: { 'Authorization': `Bearer ${spotifyAccessToken}` }
-            });
-            const data = await response.json();
-            return data.devices || [];
-        } catch (err) {
-            console.error("Error fetching devices:", err);
-            return [];
-        }
-    }
-
-    async function transferSpotifyPlayback(deviceId) {
-        try {
-            await fetch('https://api.spotify.com/v1/me/player', {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${spotifyAccessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ device_ids: [deviceId], play: true })
-            });
-        } catch (err) {
-            console.error("Transfer Error:", err);
-        }
-    }
-    
-    const spotifySearchInput = document.getElementById('spotifySearchInput');
-    const spotifySearchBtn = document.getElementById('spotifySearchBtn');
-    const spotifyResults = document.getElementById('spotifyResults');
-    const spotifyConnectBtn = document.getElementById('spotifyConnectBtn');
-    const spotifyUser = document.getElementById('spotifyUser');
-    const spotifyUserImg = document.getElementById('spotifyUserImg');
-    const spotifyUserName = document.getElementById('spotifyUserName');
-
-    // PKCE Helpers
-    const generateRandomString = (length) => {
-        const possible = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-        const values = crypto.getRandomValues(new Uint8Array(length));
-        return values.reduce((acc, x) => acc + possible[x % possible.length], "");
-    };
-
-    const sha256 = async (plain) => {
-        const encoder = new TextEncoder();
-        const data = encoder.encode(plain);
-        return window.crypto.subtle.digest('SHA-256', data);
-    };
-
-    const base64encode = (input) => {
-        return btoa(String.fromCharCode(...new Uint8Array(input)))
-            .replace(/=/g, '')
-            .replace(/\+/g, '-')
-            .replace(/\//g, '_');
-    };
-
-    // Function to update Client ID
-    function setSpotifyClientId() {
-        const newId = prompt("Please enter your Spotify Client ID:", SPOTIFY_CLIENT_ID);
-        if (newId) {
-            SPOTIFY_CLIENT_ID = newId.trim();
-            localStorage.setItem('spotify_client_id', SPOTIFY_CLIENT_ID);
-            alert("Spotify Client ID updated! Please try connecting again.");
-        }
-    }
-
-    // Handle Spotify Auth Redirect
-    async function checkSpotifyAuth() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const code = urlParams.get('code');
-        const error = urlParams.get('error');
-
-        if (error) {
-            alert(`Spotify Error: ${error}\n\nMake sure your Client ID is correct and your Redirect URI in Spotify Dashboard is exactly: ${REDIRECT_URI}`);
-            return;
-        }
-
-        if (code) {
-            // Exchange code for token
-            const codeVerifier = localStorage.getItem('spotify_code_verifier');
-            
-            try {
-                const response = await fetch('https://accounts.spotify.com/api/token', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        client_id: SPOTIFY_CLIENT_ID,
-                        grant_type: 'authorization_code',
-                        code: code,
-                        redirect_uri: REDIRECT_URI,
-                        code_verifier: codeVerifier,
-                    }),
-                });
-
-                const data = await response.json();
-                if (data.access_token) {
-                    spotifyAccessToken = data.access_token;
-                    localStorage.setItem('spotify_access_token', spotifyAccessToken);
-                    // Clear the URL
-                    window.history.replaceState({}, document.title, window.location.pathname);
-                    updateSpotifyUI(true);
-                    initSpotifyPlayer();
-                } else {
-                    console.error("Token exchange failed:", data);
-                }
-            } catch (e) {
-                console.error("Auth Error:", e);
-            }
-        } else if (spotifyAccessToken) {
-            updateSpotifyUI(true);
-        }
-    }
-
-    async function updateSpotifyUI(isConnected) {
-        if (isConnected) {
-            spotifyConnectBtn.style.display = 'none';
-            spotifyUser.style.display = 'flex';
-            
-            try {
-                const response = await fetch('https://api.spotify.com/v1/me', {
-                    headers: { 'Authorization': `Bearer ${spotifyAccessToken}` }
-                });
-                if (response.ok) {
-                    const data = await response.json();
-                    spotifyUserName.textContent = data.display_name;
-                    if (data.images && data.images.length > 0) {
-                        spotifyUserImg.src = data.images[0].url;
-                        spotifyUserImg.style.display = 'block';
+    window.onYouTubeIframeAPIReady = () => {
+        player = new YT.Player('youtube-player', {
+            height: '100%',
+            width: '100%',
+            playerVars: { 'autoplay': 1, 'controls': 1, 'modestbranding': 1 },
+            events: {
+                'onReady': (event) => console.log("YouTube Player Ready"),
+                'onStateChange': (event) => {
+                    if (event.data === YT.PlayerState.PLAYING) {
+                        isPlaying = true;
+                        updatePlayPauseUI(true);
+                        startProgressLoop();
+                    } else {
+                        isPlaying = false;
+                        updatePlayPauseUI(false);
+                        stopProgressLoop();
                     }
-                } else if (response.status === 401) {
-                    handleSpotifyLogout();
-                }
-            } catch (e) {
-                console.error("Spotify Profile Error:", e);
+                },
+                'onError': (e) => console.error("YT Player Error:", e)
             }
-        } else {
-            spotifyConnectBtn.style.display = 'flex';
-            spotifyUser.style.display = 'none';
-        }
-    }
-
-    async function handleSpotifyLogin() {
-        if (window.location.protocol === 'file:') {
-            alert("Spotify does not support 'file://' URLs.\n\nPlease use http://127.0.0.1:5500/index.html (or similar).");
-            return;
-        }
-
-        const codeVerifier = generateRandomString(64);
-        const hashed = await sha256(codeVerifier);
-        const codeChallenge = base64encode(hashed);
-
-        localStorage.setItem('spotify_code_verifier', codeVerifier);
-
-        const params = new URLSearchParams({
-            response_type: 'code',
-            client_id: SPOTIFY_CLIENT_ID,
-            scope: SCOPES,
-            code_challenge_method: 'S256',
-            code_challenge: codeChallenge,
-            redirect_uri: REDIRECT_URI,
         });
+    };
 
-        window.location.href = `https://accounts.spotify.com/authorize?${params.toString()}`;
-    }
-
-    function handleSpotifyLogout() {
-        localStorage.removeItem('spotify_access_token');
-        spotifyAccessToken = null;
-        updateSpotifyUI(false);
-    }
-
-    spotifyConnectBtn.onclick = handleSpotifyLogin;
-    checkSpotifyAuth();
-
-    async function searchSpotify(query) {
+    async function searchMusic(query) {
         if (!query) return;
-        if (!spotifyAccessToken) {
-            alert("Please connect Spotify first!");
-            return;
-        }
+        const resultsEl = document.getElementById('musicResults');
+        const btn = document.getElementById('musicSearchBtn');
         
-        spotifySearchBtn.disabled = true;
-        spotifySearchBtn.textContent = "Searching...";
-        spotifyResults.innerHTML = `
+        btn.disabled = true;
+        btn.textContent = "Searching...";
+        resultsEl.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
-                <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid #1DB954; width: 30px; height: 30px; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
-                <p>Searching Spotify...</p>
+                <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); width: 30px; height: 30px; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
+                <p>Searching YouTube...</p>
             </div>
         `;
 
         try {
-            const response = await fetch(`https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track&limit=20`, {
-                headers: { 'Authorization': `Bearer ${spotifyAccessToken}` }
-            });
-            
-            if (!response.ok) {
-                if (response.status === 401) {
-                    handleSpotifyLogout();
-                    throw new Error("Session expired. Please reconnect Spotify.");
-                }
-                throw new Error("Spotify Search Failed");
-            }
-            
+            const response = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=20&key=${YT_API_KEY}`);
             const data = await response.json();
-            const tracks = data.tracks.items;
             
-            if (tracks.length === 0) {
-                spotifyResults.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">No tracks found.</div>';
-            } else {
-                spotifyResults.innerHTML = '';
-                tracks.forEach(track => {
-                    const card = document.createElement('div');
-                    card.style.cssText = `
-                        background: rgba(255, 255, 255, 0.03);
-                        border: 1px solid rgba(255, 255, 255, 0.05);
-                        border-radius: 12px;
-                        overflow: hidden;
-                        transition: all 0.2s ease;
-                        cursor: pointer;
-                    `;
-                    card.onmouseover = () => {
-                        card.style.transform = 'translateY(-5px)';
-                        card.style.background = 'rgba(255, 255, 255, 0.06)';
-                    };
-                    card.onmouseout = () => {
-                        card.style.transform = 'translateY(0)';
-                        card.style.background = 'rgba(255, 255, 255, 0.03)';
-                    };
-                    
-                    const thumb = track.album.images[0]?.url || '';
-                    const artist = track.artists.map(a => a.name).join(', ');
-                    
-                    const triggerPlay = () => playSpotifyTrack(track.id, track.name, artist, thumb, track.preview_url);
-                    card.onclick = triggerPlay;
-                    card.ontouchend = (e) => {
-                        e.preventDefault(); // Prevent double trigger
-                        triggerPlay();
-                    };
+            if (data.error) throw new Error(data.error.message);
+            
+            resultsEl.innerHTML = '';
+            data.items.forEach(item => {
+                const videoId = item.id.videoId;
+                const title = item.snippet.title;
+                const thumb = item.snippet.thumbnails.high.url;
+                const channel = item.snippet.channelTitle;
 
-                    card.innerHTML = `
-                        <div style="position: relative; aspect-ratio: 1/1; overflow: hidden;">
-                            <img src="${thumb}" style="width: 100%; height: 100%; object-fit: cover;">
-                            <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(29, 185, 84, 0.9); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem; color: white;">Spotify</div>
-                        </div>
-                        <div style="padding: 12px;">
-                            <h5 style="margin: 0 0 4px; font-size: 0.9rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: white;">${track.name}</h5>
-                            <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">${artist}</p>
-                        </div>
-                    `;
-                    spotifyResults.appendChild(card);
-                });
-            }
+                const card = document.createElement('div');
+                card.className = 'music-card';
+                card.onclick = () => playYouTubeVideo(videoId, title, channel, thumb);
+                card.innerHTML = `
+                    <img src="${thumb}" alt="${title}">
+                    <div class="music-card-content">
+                        <h5>${title}</h5>
+                        <p>${channel}</p>
+                    </div>
+                `;
+                resultsEl.appendChild(card);
+            });
         } catch (error) {
-            spotifyResults.innerHTML = `
-                <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: #fda4af;">
-                    <i class="fas fa-exclamation-circle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                    <p>To get full tracks on mobile, please reconnect Spotify to grant playback permissions.</p>
-                    <button onclick="handleSpotifyLogin()" class="primary-btn" style="margin-top: 1rem; width: auto; padding: 8px 20px;">Reconnect Spotify for Full Tracks</button>
-                </div>
-            `;
+            console.error("Search Error:", error);
+            resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">Error: ${error.message}</p>`;
         } finally {
-            spotifySearchBtn.disabled = false;
-            spotifySearchBtn.textContent = "Search";
+            btn.disabled = false;
+            btn.textContent = "Search Music";
         }
     }
 
-    spotifySearchBtn.onclick = () => searchSpotify(spotifySearchInput.value);
-    spotifySearchInput.onkeypress = (e) => { if (e.key === 'Enter') searchSpotify(spotifySearchInput.value); };
-
-    async function playSpotifyTrack(trackId, title, artist, thumb, previewUrl) {
-        console.log("Playing track:", title, trackId);
-        if (!spotifyAccessToken) {
-            alert("Please connect Spotify first to play full tracks!");
-            showSection('dashboard');
+    function playYouTubeVideo(videoId, title, artist, thumb) {
+        if (!player || !player.loadVideoById) {
+            console.error("YouTube Player not ready");
             return;
         }
-        // Show player bar
-        const playerBar = document.getElementById('musicPlayerBar');
-        playerBar.style.display = 'flex';
         
+        document.getElementById('musicPlayerBar').style.display = 'flex';
         document.getElementById('playerTitle').textContent = title;
         document.getElementById('playerArtist').textContent = artist;
         document.getElementById('playerThumb').src = thumb;
         
-        if (audioPlayer) {
-            audioPlayer.pause();
-            audioPlayer.src = '';
-            stopProgressLoop();
-        }
-
-        const playOnDevice = async (deviceId) => {
-            return fetch(`https://api.spotify.com/v1/me/player/play${deviceId ? `?device_id=${deviceId}` : ''}`, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `Bearer ${spotifyAccessToken}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ uris: [`spotify:track:${trackId}`] })
-            });
-        };
-
-        // 1. Try JaVibe Player (SDK - FORCED ON ALL DEVICES)
-        if (spotifyAccessToken && spotifyDeviceId) {
-            try {
-                const res = await playOnDevice(spotifyDeviceId);
-                if (res.ok) {
-                    console.log("Playing on JaVibe Player");
-                    return finalizePlayback(trackId, true);
-                }
-            } catch (e) { console.warn("SDK Play failed, trying sync..."); }
-        }
-
-        // 2. AGGRESSIVE DEVICE SYNC (Crucial for Mobile Spoofing)
-        if (spotifyAccessToken) {
-            const devices = await getSpotifyDevices();
-            // Find the best device to play on: active > smartphone > any
-            const targetDevice = devices.find(d => d.is_active) || 
-                               devices.find(d => d.type.toLowerCase() === 'smartphone') || 
-                               devices[0];
-            
-            if (targetDevice) {
-                console.log(`Syncing playback to: ${targetDevice.name} (${targetDevice.type})`);
-                try {
-                    // Force the transfer FIRST
-                    await transferSpotifyPlayback(targetDevice.id);
-                    
-                    // Give Spotify a small window to hand over control
-                    await new Promise(r => setTimeout(r, 800));
-                    
-                    const res = await playOnDevice(targetDevice.id);
-                    if (res.ok) {
-                        return finalizePlayback(trackId, true);
-                    }
-                } catch (e) { console.warn("Mobile device sync failed:", e); }
-            }
-        }
-
-        // 3. LAST RESORT: Embed (30s preview) - NO FALLBACK BUTTONS
-        const playerContainer = document.getElementById('youtube-player-container');
-        playerContainer.innerHTML = `<iframe src="https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0" width="100%" height="80" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="border-radius:12px;"></iframe>`;
-        
-        if (window.innerWidth < 1024) {
-            showMobileSpotifyHint();
-        }
-
-        isPlaying = true;
-        updatePlayPauseUI(true);
-    }
-
-    function finalizePlayback(trackId, isFullTrack) {
-        const playerContainer = document.getElementById('youtube-player-container');
-        // If it's a full track playing via API, we use a "cleaner" embed that doesn't scream "PREVIEW"
-        const embedUrl = `https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0`;
-        playerContainer.innerHTML = `<iframe src="${embedUrl}" width="100%" height="80" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="border-radius:12px;"></iframe>`;
-        
-        isPlaying = true;
-        updatePlayPauseUI(true);
-        
-        if (isFullTrack) {
-            // Optional: Add a small indicator that it's playing full track via connected device
-            console.log("Full track playing via active device.");
-        }
-    }
-
-    function showMobileSpotifyHint() {
-        const hint = document.createElement('div');
-        hint.id = 'spotifyMobileHint';
-        hint.style = "position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: #1DB954; color: white; padding: 12px 20px; border-radius: 30px; font-size: 0.9rem; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 10px; width: 90%; max-width: 400px;";
-        hint.innerHTML = `
-            <i class="fab fa-spotify"></i>
-            <span>To get full tracks, make sure Spotify is open!</span>
-            <button onclick="window.location.href='spotify:track:'; this.parentElement.remove();" style="background: white; color: #1DB954; border: none; padding: 5px 12px; border-radius: 15px; font-weight: 600; cursor: pointer;">Wake Up</button>
-            <i class="fas fa-times" onclick="this.parentElement.remove()" style="margin-left: auto; cursor: pointer;"></i>
-        `;
-        document.body.appendChild(hint);
-        setTimeout(() => hint.remove(), 8000);
-    }
-
-    function updatePlayPauseUI(playing) {
-        const btn = document.getElementById('playPauseBtn');
-        if (btn) btn.innerHTML = playing ? '<i class="fas fa-pause" style="color: black; font-size: 1.1rem;"></i>' : '<i class="fas fa-play" style="color: black; font-size: 1.1rem; margin-left: 3px;"></i>';
+        player.loadVideoById(videoId);
+        document.getElementById('playerSection').style.display = 'block';
     }
 
     window.togglePlayPause = () => {
-        // If we are using the Spotify Embed, we can't easily control it via JS 
-        // because of cross-origin restrictions on the iframe.
-        // We let the user click the play/pause button inside the Embed itself.
-        // However, we can still toggle the UI state if we had a way to communicate.
-        // For now, we'll just show a message or let the Embed handle it.
-        if (audioPlayer.src && audioPlayer.src !== window.location.href) {
-            if (isPlaying) {
-                audioPlayer.pause();
-            } else {
-                audioPlayer.play();
-            }
-            isPlaying = !isPlaying;
-            updatePlayPauseUI(isPlaying);
+        if (!player) return;
+        const state = player.getPlayerState();
+        if (state === YT.PlayerState.PLAYING) {
+            player.pauseVideo();
         } else {
-            // If it's the Embed, the user should use the Embed's own controls.
-            // We'll just update our local UI state for visual consistency.
-            isPlaying = !isPlaying;
-            updatePlayPauseUI(isPlaying);
+            player.playVideo();
         }
     };
 
-    document.getElementById('progressContainer').onclick = (e) => {
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const pct = x / rect.width;
-        
-        if (audioPlayer.src && audioPlayer.src !== window.location.href) {
-            audioPlayer.currentTime = audioPlayer.duration * pct;
+    function updatePlayPauseUI(playing) {
+        const btn = document.getElementById('playPauseBtn');
+        if (btn) btn.innerHTML = playing ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play" style="margin-left: 3px;"></i>';
+    }
+
+    window.togglePlayer = () => {
+        const playerSection = document.getElementById('playerSection');
+        const icon = document.getElementById('togglePlayerIcon');
+        if (playerSection.style.display === 'none') {
+            playerSection.style.display = 'block';
+            icon.className = 'fas fa-chevron-down';
+        } else {
+            playerSection.style.display = 'none';
+            icon.className = 'fas fa-chevron-up';
         }
     };
+
+    document.getElementById('musicSearchBtn').onclick = () => searchMusic(document.getElementById('musicSearchInput').value);
+    document.getElementById('musicSearchInput').onkeypress = (e) => { if (e.key === 'Enter') searchMusic(e.target.value); };
 
     document.getElementById('volumeSlider').addEventListener('input', (e) => {
-        const vol = e.target.value;
-        if (audioPlayer) audioPlayer.volume = vol / 100;
+        if (player && player.setVolume) player.setVolume(e.target.value);
     });
 
-    // --- LEGACY YOUTUBE SEARCH (Disabled) ---
-    /*
-    const youtubeSearchInput = document.getElementById('youtubeSearchInput');
-    const youtubeSearchBtn = document.getElementById('youtubeSearchBtn');
-    const youtubeResults = document.getElementById('youtubeResults');
-    ...
-    */
-        if (player && player.setVolume) {
-            player.setVolume(e.target.value);
-        };
+    // --- COOKIE MANAGEMENT ---
+    const saveCookiesBtn = document.getElementById('saveCookiesBtn');
+    const cookieInput = document.getElementById('cookieInput');
+    const cookieStatus = document.getElementById('cookieStatus');
 
-    youtubeSearchBtn.onclick = () => searchYouTube(youtubeSearchInput.value);
-        youtubeSearchInput.onkeypress = (e) => {
-            if (e.key === 'Enter') searchYouTube(youtubeSearchInput.value);
+    async function loadHardcodedCookies() {
+        try {
+            const response = await fetch('cookies.txt');
+            if (response.ok) {
+                const text = await response.text();
+                localStorage.setItem('youtube_cookies', text);
+                if (cookieInput) cookieInput.value = text;
+                console.log("JaVibe: Hardcoded cookies.txt loaded successfully.");
+                if (cookieStatus) {
+                    cookieStatus.textContent = "Hardcoded cookies.txt loaded!";
+                    cookieStatus.style.color = "#4ade80";
+                }
+            }
+        } catch (err) {
+            console.warn("JaVibe: No cookies.txt found in root or fetch failed.");
+        }
+    }
+
+    if (saveCookiesBtn) {
+        saveCookiesBtn.onclick = () => {
+            const cookies = cookieInput.value.trim();
+            if (!cookies) {
+                cookieStatus.textContent = "Please paste some content.";
+                cookieStatus.style.color = "#fda4af";
+                return;
+            }
+            try {
+                localStorage.setItem('youtube_cookies', cookies);
+                cookieStatus.textContent = "Cookies saved successfully! (Note: These will be used for future enhanced search requests if a proxy is configured).";
+                cookieStatus.style.color = "#4ade80";
+            } catch (e) {
+                cookieStatus.textContent = "Error saving cookies.";
+                cookieStatus.style.color = "#fda4af";
+            }
         };
-    // (removed stray closing brace)
+    }
+
+    // Load existing cookies and fetch hardcoded file
+    loadHardcodedCookies();
 
     // --- AUTH LOGIC ---
     function showMessage(msg, isError = false) {
@@ -1812,6 +1523,30 @@
 
     // Initial call
     initAuthButtons();
+
+    if (collapseBtn) {
+        collapseBtn.onclick = () => {
+            sidebar.classList.toggle('collapsed');
+            const icon = collapseBtn.querySelector('i');
+            const text = collapseBtn.querySelector('span');
+            if (sidebar.classList.contains('collapsed')) {
+                icon.className = 'fas fa-angles-right';
+                text.textContent = 'Expand';
+            } else {
+                icon.className = 'fas fa-angles-left';
+                text.textContent = 'Collapse';
+            }
+        };
+    }
+
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', (e) => {
+        if (window.innerWidth <= 1024) {
+            if (sidebar && menuToggle && !sidebar.contains(e.target) && !menuToggle.contains(e.target) && sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+            }
+        }
+    });
 </script>
 
 </body>
