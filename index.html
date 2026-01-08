@@ -1049,16 +1049,7 @@
             <div id="settingsSection" style="display: none;">
                 <h2>Account Settings</h2>
                 <div class="welcome-card" style="margin-top: 1.5rem;">
-                    <h3>YouTube Cookies (Hardcoded: cookies.txt)</h3>
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1rem;">
-                        The system is currently reading from <code>cookies.txt</code> in the project root. You can also manually override them below.
-                    </p>
-                    <textarea id="cookieInput" placeholder="Loading cookies.txt..." style="width: 100%; height: 150px; background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 8px; color: white; padding: 10px; font-family: monospace; font-size: 0.8rem; margin-bottom: 10px;"></textarea>
-                    <button id="saveCookiesBtn" class="primary-btn" style="font-size: 0.85rem;">Override & Save</button>
-                    <p id="cookieStatus" style="font-size: 0.8rem; margin-top: 10px;"></p>
-                </div>
-                <div class="welcome-card" style="margin-top: 1.5rem;">
-                    <p>Other settings functionality is currently in development.</p>
+                    <p>Account management and other settings are currently in development.</p>
                 </div>
             </div>
         </main>
@@ -1367,104 +1358,15 @@
     // --- AD-FREE PLAYER (PIPED) ---
     // No initialization needed for iframe-based Piped player.
 
-    // Helper to fetch through multiple CORS proxies
-    async function fetchWithProxy(url, type = 'text', method = 'GET', body = null) {
-        const proxies = [
-            `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-            `https://api.codetabs.com/v1/proxy?url=${encodeURIComponent(url)}`,
-            `https://corsproxy.io/?${encodeURIComponent(url)}`,
-            `https://cors-proxy.org/?url=${encodeURIComponent(url)}`,
-            `https://thingproxy.freeboard.io/fetch/${url}`
-            // corsproxy.org REMOVED - Unreliable and blocks GitHub Pages
-        ];
-
-        for (const proxy of proxies) {
-            try {
-                console.log(`JaVibe: Trying proxy ${proxy}`);
-                const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000); // Increased to 15s to prevent "Signal Aborted"
-
-                const options = { 
-                    method, 
-                    headers: { 'Accept': 'application/json, text/plain, */*' },
-                    signal: controller.signal
-                };
-                if (body) {
-                    options.headers['Content-Type'] = 'application/json';
-                    options.body = JSON.stringify(body);
-                }
-
-                const response = await fetch(proxy, options);
-                clearTimeout(timeoutId);
-                
-                if (!response.ok) {
-                    console.warn(`JaVibe: Proxy ${proxy} returned status ${response.status}`);
-                    continue;
-                }
-                
-                let result;
-                if (proxy.includes('allorigins.win')) {
-                    const data = await response.json();
-                    result = data.contents;
-                } else {
-                    result = await response.text();
-                }
-
-                // SECURITY/BLOCK CHECK: Robust detection of anti-bot/forbidden challenges
-                const isBlocked = typeof result === 'string' && (
-                    result.includes('Forbidden') || 
-                    result.includes('access denied') || 
-                    result.includes('Protected by go-away') ||
-                    result.includes('administrative rule') ||
-                    result.includes('verifying your request') ||
-                    result.includes('Cloudflare') ||
-                    result.includes('hCaptcha')
-                );
-
-                if (isBlocked) {
-                    console.warn(`JaVibe: Proxy ${proxy} returned an administrative block or challenge.`);
-                    continue;
-                }
-                
-                try {
-                    return type === 'json' ? JSON.parse(result) : result;
-                } catch (parseErr) {
-                    console.warn(`JaVibe: Failed to parse result from ${proxy} as ${type}`);
-                    continue;
-                }
-            } catch (err) {
-                if (err.name === 'AbortError') {
-                    console.warn(`JaVibe: Proxy ${proxy} timed out (Signal Aborted)`);
-                } else {
-                    console.warn(`JaVibe: Proxy ${proxy} failed`, err);
-                }
-            }
-        }
-        throw new Error("All proxies failed.");
-    }
-
-    let lastSearchQuery = "";
-    const searchCache = new Map();
-
+    // --- SEARCH LOGIC (PIPED API) ---
     async function searchMusic(query) {
         if (!query) return;
         
-        // Check cache first
-        if (searchCache.has(query)) {
-            console.log(`JaVibe: Cache hit for "${query}"`);
-            displayResults(searchCache.get(query));
-            return;
-        }
-
-        // FORCE CLEAR EVERYTHING
         const resultsEl = document.getElementById('musicResults');
         resultsEl.innerHTML = ''; 
         
-        lastSearchQuery = query;
-        window.lastSearchQuery = query;
         const btn = document.getElementById('musicSearchBtn');
         const input = document.getElementById('musicSearchInput');
-        
         if (input) input.value = '';
         
         btn.disabled = true;
@@ -1473,111 +1375,57 @@
         resultsEl.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
                 <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); width: 30px; height: 30px; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
-                <p>Searching for "${query}" across ad-free nodes...</p>
+                <p>Searching for "${query}"...</p>
             </div>
         `;
 
-        // PARALLEL STRATEGY: Fire all requests at once, take the first valid one.
-        const apiInstances = [
-            { url: 'https://pipedapi.moomoo.me', type: 'piped' },
-            { url: 'https://api.piped.victr.me', type: 'piped' },
-            { url: 'https://pipedapi.mha.fi', type: 'piped' },
-            { url: 'https://pipedapi.adminforge.de', type: 'piped' },
-            { url: 'https://pipedapi.astartes.nl', type: 'piped' },
-            { url: 'https://invidious.projectsegfau.lt', type: 'invidious' },
-            { url: 'https://invidious.privacydev.net', type: 'invidious' },
-            { url: 'https://invidious.flokinet.to', type: 'invidious' }
-            // inv.zzls.xyz removed due to "Go-away" bot protection
+        const nodes = [
+            'https://pipedapi.moomoo.me',
+            'https://api.piped.victr.me',
+            'https://pipedapi.mha.fi'
         ];
 
-        const fetchResults = async (instance) => {
-            const searchUrl = instance.type === 'piped' 
-                ? `${instance.url}/search?q=${encodeURIComponent(query)}&filter=videos`
-                : `${instance.url}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
-            
-            let data;
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 second hard timeout
+
+        const fetchFromNode = async (baseUrl) => {
             try {
-                const res = await fetch(searchUrl);
-                if (!res.ok) throw new Error("Direct fetch failed");
-                data = await res.json();
+                const response = await fetch(`${baseUrl}/search?q=${encodeURIComponent(query)}&filter=videos`, {
+                    signal: controller.signal
+                });
+                if (!response.ok) throw new Error("Node failed");
+                const data = await response.json();
+                if (!data.items || data.items.length === 0) throw new Error("No items");
+                
+                return data.items.slice(0, 20).map(item => ({
+                    videoId: item.videoId,
+                    title: item.title,
+                    author: item.uploaderName,
+                    thumb: item.thumbnail
+                })).filter(r => r.videoId);
             } catch (err) {
-                // Try proxy as fallback if direct fails
-                data = await fetchWithProxy(searchUrl, 'json');
+                throw err;
             }
-
-            const items = instance.type === 'piped' ? data.items : data;
-            if (!items || items.length === 0) throw new Error("No results");
-
-            const results = items.slice(0, 20).map(item => ({
-                videoId: item.videoId || (item.url ? item.url.split('v=')[1] : null),
-                title: item.title,
-                author: item.uploaderName || item.author,
-                thumb: item.thumbnail || (item.videoThumbnails ? item.videoThumbnails[0].url : null)
-            })).filter(r => r.videoId);
-
-            if (results.length === 0) throw new Error("No valid video IDs");
-            return results;
         };
 
         try {
-            // Promise.any takes the FIRST successful result
-            const fastestResults = await Promise.any(apiInstances.map(fetchResults));
-            
-            // Success!
-            searchCache.set(query, fastestResults);
-            displayResults(fastestResults);
+            const results = await Promise.any(nodes.map(fetchFromNode));
+            clearTimeout(timeoutId);
+            displayResults(results);
+        } catch (err) {
+            console.error("JaVibe: Search failed", err);
+            resultsEl.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 2rem;">
+                    <p style="color: #fda4af; margin-bottom: 1rem;">Search failed or timed out. Nodes might be congested.</p>
+                    <button onclick="searchMusic('${query.replace(/'/g, "\\'")}')" class="primary-btn" style="width: auto; padding: 8px 20px;">Retry Now</button>
+                </div>
+            `;
+        } finally {
             btn.disabled = false;
             btn.textContent = "Search Music";
-            return;
-        } catch (err) {
-            console.warn("JaVibe: All parallel API nodes failed, falling back to direct scrape.", err);
         }
-
-        // FINAL FALLBACK: Direct Scrape via Proxy
-        try {
-            console.log(`JaVibe: All API nodes failed. Trying direct scrape fallback for "${query}"`);
-            const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`; // filter for videos only
-            const html = await fetchWithProxy(ytUrl, 'text');
-            
-            // Extract video data using regex from the ytInitialData JSON in the HTML
-            const dataMatch = html.match(/var ytInitialData = (\{.*?\});/);
-            if (dataMatch) {
-                const data = JSON.parse(dataMatch[1]);
-                const contents = data.contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents[0].itemSectionRenderer.contents;
-                
-                const results = contents
-                    .filter(c => c.videoRenderer)
-                    .map(c => {
-                        const v = c.videoRenderer;
-                        return {
-                            videoId: v.videoId,
-                            title: v.title.runs[0].text,
-                            author: v.ownerText.runs[0].text,
-                            thumb: v.thumbnail.thumbnails[0].url
-                        };
-                    })
-                    .slice(0, 20);
-
-                if (results.length > 0) {
-                    displayResults(results);
-                    btn.disabled = false;
-                    btn.textContent = "Search Music";
-                    return;
-                }
-            }
-        } catch (e) {
-            console.error("JaVibe: Direct scrape fallback failed", e);
-        }
-
-        resultsEl.innerHTML = `
-            <div style="grid-column: 1/-1; text-align: center; padding: 2rem;">
-                <p style="color: #fda4af; margin-bottom: 1rem;">All search nodes are currently congested. Please try again in a few seconds.</p>
-                <button onclick="searchMusic(lastSearchQuery)" class="primary-btn" style="width: auto; padding: 8px 20px;">Retry Search</button>
-            </div>
-        `;
-        btn.disabled = false;
-        btn.textContent = "Search Music";
     }
+
 
     function displayResults(results) {
         const resultsEl = document.getElementById('musicResults');
@@ -1661,51 +1509,6 @@
             console.log("Volume adjusted to:", e.target.value);
         });
     }
-
-    // --- COOKIE MANAGEMENT ---
-    const saveCookiesBtn = document.getElementById('saveCookiesBtn');
-    const cookieInput = document.getElementById('cookieInput');
-    const cookieStatus = document.getElementById('cookieStatus');
-
-    async function loadHardcodedCookies() {
-        try {
-            const response = await fetch('cookies.txt');
-            if (response.ok) {
-                const text = await response.text();
-                localStorage.setItem('youtube_cookies', text);
-                if (cookieInput) cookieInput.value = text;
-                console.log("JaVibe: Hardcoded cookies.txt loaded successfully.");
-                if (cookieStatus) {
-                    cookieStatus.textContent = "Hardcoded cookies.txt loaded!";
-                    cookieStatus.style.color = "#4ade80";
-                }
-            }
-        } catch (err) {
-            console.warn("JaVibe: No cookies.txt found in root or fetch failed.");
-        }
-    }
-
-    if (saveCookiesBtn) {
-        saveCookiesBtn.onclick = () => {
-            const cookies = cookieInput.value.trim();
-            if (!cookies) {
-                cookieStatus.textContent = "Please paste some content.";
-                cookieStatus.style.color = "#fda4af";
-                return;
-            }
-            try {
-                localStorage.setItem('youtube_cookies', cookies);
-                cookieStatus.textContent = "Cookies saved successfully! (Note: These will be used for future enhanced search requests if a proxy is configured).";
-                cookieStatus.style.color = "#4ade80";
-            } catch (e) {
-                cookieStatus.textContent = "Error saving cookies.";
-                cookieStatus.style.color = "#fda4af";
-            }
-        };
-    }
-
-    // Load existing cookies and fetch hardcoded file
-    loadHardcodedCookies();
 
     // --- AUTH LOGIC ---
     function showMessage(msg, isError = false) {
@@ -1803,4 +1606,3 @@
 
 </body>
 </html>
-
