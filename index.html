@@ -1359,18 +1359,20 @@
     // No initialization needed for iframe-based Piped player.
 
     // --- SEARCH LOGIC (PIPED API) ---
-    async function searchMusic(query) {
+    window.searchMusic = async function(query) {
         if (!query) return;
         
         const resultsEl = document.getElementById('musicResults');
+        if (!resultsEl) return;
         resultsEl.innerHTML = ''; 
         
         const btn = document.getElementById('musicSearchBtn');
         const input = document.getElementById('musicSearchInput');
-        if (input) input.value = '';
         
-        btn.disabled = true;
-        btn.textContent = "Searching...";
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = "Searching...";
+        }
         
         resultsEl.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
@@ -1382,11 +1384,14 @@
         const nodes = [
             'https://pipedapi.moomoo.me',
             'https://api.piped.victr.me',
-            'https://pipedapi.mha.fi'
+            'https://pipedapi.mha.fi',
+            'https://pipedapi.adminforge.de',
+            'https://pipedapi.astartes.nl',
+            'https://pipedapi.kavin.rocks'
         ];
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 second hard timeout
+        const timeoutId = setTimeout(() => controller.abort(), 8000); // Increased to 8s to give it a better chance
 
         const fetchFromNode = async (baseUrl) => {
             try {
@@ -1417,17 +1422,18 @@
             resultsEl.innerHTML = `
                 <div style="grid-column: 1/-1; text-align: center; padding: 2rem;">
                     <p style="color: #fda4af; margin-bottom: 1rem;">Search failed or timed out. Nodes might be congested.</p>
-                    <button onclick="searchMusic('${query.replace(/'/g, "\\'")}')" class="primary-btn" style="width: auto; padding: 8px 20px;">Retry Now</button>
+                    <button onclick="window.searchMusic('${query.replace(/'/g, "\\'")}')" class="primary-btn" style="width: auto; padding: 8px 20px;">Retry Now</button>
                 </div>
             `;
         } finally {
-            btn.disabled = false;
-            btn.textContent = "Search Music";
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = "Search Music";
+            }
         }
     }
 
-
-    function displayResults(results) {
+    window.displayResults = function(results) {
         const resultsEl = document.getElementById('musicResults');
         resultsEl.innerHTML = '';
         if (!results || results.length === 0) {
@@ -1437,7 +1443,7 @@
         results.forEach(item => {
             const card = document.createElement('div');
             card.className = 'music-card';
-            card.onclick = () => playYouTubeVideo(item.videoId, item.title, item.author, item.thumb);
+            card.onclick = () => window.playYouTubeVideo(item.videoId, item.title, item.author, item.thumb);
             
             // Handle missing thumbnails or data
             const thumbUrl = item.thumb || `https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg`;
@@ -1455,7 +1461,7 @@
         });
     }
 
-    async function playYouTubeVideo(videoId, title, artist, thumb) {
+    window.playYouTubeVideo = async function(videoId, title, artist, thumb) {
         const playerBar = document.getElementById('musicPlayerBar');
         playerBar.style.display = 'flex';
         document.getElementById('playerTitle').textContent = title;
@@ -1493,12 +1499,12 @@
     };
 
     const searchBtn = document.getElementById('musicSearchBtn');
-    if (searchBtn) searchBtn.onclick = () => searchMusic(document.getElementById('musicSearchInput').value);
+    if (searchBtn) searchBtn.onclick = () => window.searchMusic(document.getElementById('musicSearchInput').value);
     
     const searchInput = document.getElementById('musicSearchInput');
     if (searchInput) {
         searchInput.onkeypress = (e) => { 
-            if (e.key === 'Enter') searchMusic(e.target.value); 
+            if (e.key === 'Enter') window.searchMusic(e.target.value); 
         };
     }
 
