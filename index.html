@@ -1162,7 +1162,12 @@
 
     // --- SPOTIFY INTEGRATION ---
     let SPOTIFY_CLIENT_ID = localStorage.getItem('spotify_client_id') || "55afa568f2f74d2f8235de04285fa817";
-    const REDIRECT_URI = window.location.origin + window.location.pathname;
+    
+    // Spotify requires http/https. If on file://, this will fail.
+    const REDIRECT_URI = (window.location.protocol === 'file:') 
+        ? "http://localhost:5500/index.html" // Default fallback for local dev
+        : window.location.origin + window.location.pathname;
+
     const SCOPES = "user-read-private user-read-email user-library-read streaming";
     
     let spotifyAccessToken = localStorage.getItem('spotify_access_token');
@@ -1193,7 +1198,9 @@
         const error = params.get('error');
 
         if (error === 'invalid_client') {
-            alert("Spotify says 'Invalid Client'. Please click 'Connect' again and make sure your Client ID is correct.");
+            alert("Spotify says 'Invalid Client'. Make sure your Client ID is correct in the Spotify Dashboard.");
+        } else if (error === 'unsupported_response_type') {
+            alert("CRITICAL ERROR: 'unsupported_response_type'.\n\nTo fix this:\n1. Go to your Spotify Developer Dashboard.\n2. Open your App settings.\n3. Find 'User Management' or 'Edit Settings'.\n4. Check the boxes for 'Implicit Grant' (Web API) and 'Access Token'.\n5. Save and try again!");
         }
         
         if (accessToken) {
@@ -1236,13 +1243,19 @@
     }
 
     function handleSpotifyLogin() {
+        if (window.location.protocol === 'file:') {
+            alert("Spotify does not support 'file://' URLs.\n\nPlease open JaNote through a local server (like VS Code Live Server) so the URL starts with http://127.0.0.1 or http://localhost.");
+            return;
+        }
+
         if (SPOTIFY_CLIENT_ID === "04261d76387040718664f3316e6d762e") {
-            const wantUpdate = confirm("The current Spotify Client ID might be invalid. Would you like to enter your own Client ID first?\n\nYou can get one from developer.spotify.com");
+            const wantUpdate = confirm("You are using a default Client ID. If it fails, click OK to enter your own.");
             if (wantUpdate) {
                 setSpotifyClientId();
-                return; // Let them click connect again after updating
+                return;
             }
         }
+        
         const authUrl = `https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPES)}`;
         window.location.href = authUrl;
     }
