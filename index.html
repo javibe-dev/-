@@ -1028,7 +1028,6 @@
 
                         <!-- Controls & Volume -->
                         <div style="display: flex; align-items: center; gap: 20px;">
-                            <button onclick="switchPlayerMirror()" class="primary-btn" style="padding: 5px 12px; font-size: 0.75rem; width: auto; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1);"><i class="fas fa-sync-alt"></i> Switch Mirror</button>
                             <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 5px 12px; border-radius: 20px;">
                                 <i class="fas fa-volume-up" style="font-size: 0.8rem; color: var(--text-muted);"></i>
                                 <input type="range" id="volumeSlider" min="0" max="100" value="100" style="width: 80px; height: 4px; accent-color: var(--primary);">
@@ -1608,29 +1607,13 @@
         });
     }
 
-    let currentVideoId = "";
-    let currentInstanceIndex = 0;
-    let videoInstances = [];
-
     async function playYouTubeVideo(videoId, title, artist, thumb) {
-        currentVideoId = videoId;
-        currentInstanceIndex = 0;
-        
         const playerBar = document.getElementById('musicPlayerBar');
         playerBar.style.display = 'flex';
         document.getElementById('playerTitle').textContent = title;
         document.getElementById('playerArtist').textContent = artist;
         document.getElementById('playerThumb').src = thumb;
         
-        // Verified active ad-free instances (Invidious & Piped)
-        videoInstances = [
-            `https://inv.zzls.xyz/embed/${videoId}`,
-            `https://invidious.projectsegfau.lt/embed/${videoId}`,
-            `https://yewtu.be/embed/${videoId}`,
-            `https://pipedapi.kavin.rocks/embed/${videoId}`,
-            `https://invidious.no-logs.com/embed/${videoId}`
-        ];
-
         const playerIframe = document.getElementById('adfree-player');
         
         // Auto-expand player
@@ -1641,32 +1624,12 @@
             icon.classList.add('rotated');
         }
 
-        // Try first instance
-        console.log(`JaVibe: Trying player instance ${videoInstances[currentInstanceIndex]}`);
-        playerIframe.src = videoInstances[currentInstanceIndex];
+        // Use standard YouTube embed for maximum reliability
+        console.log(`JaVibe: Playing ${videoId} via YouTube official embed`);
+        playerIframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
     }
 
-    window.switchPlayerMirror = () => {
-        if (!currentVideoId) return;
-        
-        currentInstanceIndex = (currentInstanceIndex + 1) % videoInstances.length;
-        const playerIframe = document.getElementById('adfree-player');
-        
-        console.log(`JaVibe: Switching to mirror #${currentInstanceIndex + 1}: ${videoInstances[currentInstanceIndex]}`);
-        
-        // Temporary feedback on the button
-        const btn = event.currentTarget;
-        const originalText = btn.innerHTML;
-        btn.innerHTML = `<i class="fas fa-sync-alt fa-spin"></i> Switching...`;
-        btn.disabled = true;
-        
-        playerIframe.src = videoInstances[currentInstanceIndex];
-        
-        setTimeout(() => {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }, 1000);
-    };
+    // Mirror switching logic removed as requested for standard YouTube player reliability
 
     window.togglePlayPause = () => {
         // Iframe controls its own playback. This is just a placeholder.
