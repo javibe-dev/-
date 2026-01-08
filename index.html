@@ -842,18 +842,13 @@
         /* Video logic for mobile */
         #ytPlayerContainer.in-mobile-overlay {
             position: fixed !important;
-            top: 40% !important; /* Moved up slightly for better visibility */
-            left: 50% !important;
-            transform: translate(-50%, -50%) scale(1) !important;
-            width: 90% !important;
-            max-width: 600px !important;
             z-index: 2100 !important;
-            transition: all 0.5s cubic-bezier(0.32, 0.72, 0, 1) !important;
+            transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1) !important;
             opacity: 1 !important;
             visibility: visible !important;
             border-radius: 12px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.6);
-            display: block !important; /* Ensure it's displayed */
+            display: block !important;
         }
 
         #ytPlayerContainer.in-mobile-overlay.hidden-tab {
@@ -921,27 +916,38 @@
             flex: 1;
             display: flex;
             flex-direction: column;
-            justify-content: center;
+            justify-content: flex-start;
             align-items: center;
-            gap: 40px;
+            gap: 30px;
             position: relative;
             width: 100%;
+            padding-top: 10px;
+        }
+
+        .mobile-media-area {
+            width: 100%;
+            aspect-ratio: 1/1;
+            max-width: 320px;
+            position: relative;
+            margin-bottom: 10px;
         }
 
         .mobile-art-container {
             width: 100%;
-            aspect-ratio: 1/1;
-            max-width: 320px;
+            height: 100%;
             border-radius: 20px;
             overflow: hidden;
             box-shadow: 0 20px 40px rgba(0,0,0,0.5);
             transition: opacity 0.3s ease, transform 0.3s ease;
+            position: relative;
+            z-index: 1;
         }
 
         .mobile-art-container.hidden {
             opacity: 0;
             visibility: hidden;
-            transform: scale(0.9);
+            transform: scale(0.95);
+            pointer-events: none;
         }
 
         .mobile-art-container img {
@@ -1370,8 +1376,11 @@
         </div>
 
         <div class="mobile-player-content">
-            <div id="mobileArtView" class="mobile-art-container">
-                <img id="mobilePlayerThumb" src="" alt="Album Art">
+            <div class="mobile-media-area">
+                <div id="mobileArtView" class="mobile-art-container">
+                    <img id="mobilePlayerThumb" src="" alt="Album Art">
+                </div>
+                <!-- Video will be positioned over this area in JS -->
             </div>
 
             <div class="mobile-info-section">
@@ -1668,6 +1677,8 @@
                 const videoBtn = document.getElementById('mobileTabVideo');
                 if (videoBtn && videoBtn.classList.contains('active')) {
                     desktopContainer.classList.remove('hidden-tab');
+                    // Ensure position is synced after a short delay for overlay animation
+                    setTimeout(syncVideoPosition, 50);
                 } else {
                     desktopContainer.classList.add('hidden-tab');
                 }
@@ -1676,27 +1687,39 @@
             // Re-check marquee after overlay is visible
             setTimeout(() => {
                 window.checkMarquee();
-            }, 500); // Give it enough time to be visible
+                syncVideoPosition();
+            }, 500);
         } else {
             overlay.classList.remove('active');
             document.body.style.overflow = '';
             
-            // Re-hide video container if it was in overlay mode
             if (desktopContainer) {
                 desktopContainer.classList.add('hidden-tab');
             }
 
-            // Remove classes after transition finishes for a clean exit
             setTimeout(() => {
                 if (!overlay.classList.contains('active')) {
                     if (desktopContainer) {
                         desktopContainer.classList.remove('in-mobile-overlay');
                         desktopContainer.classList.remove('hidden-tab');
+                        // Reset inline styles
+                        desktopContainer.style.top = '';
+                        desktopContainer.style.left = '';
+                        desktopContainer.style.width = '';
+                        desktopContainer.style.height = '';
+                        desktopContainer.style.transform = '';
                     }
                 }
-            }, 600); // Matches the 0.6s transition duration
+            }, 600);
         }
     };
+
+    // Keep video synced on resize/orientation change
+    window.addEventListener('resize', () => {
+        if (document.getElementById('mobilePlayerOverlay').classList.contains('active')) {
+            syncVideoPosition();
+        }
+    });
 
     window.switchMobileTab = (tab) => {
         const audioBtn = document.getElementById('mobileTabAudio');
@@ -1707,24 +1730,33 @@
         if (tab === 'audio') {
             audioBtn.classList.add('active');
             videoBtn.classList.remove('active');
-            if (artView) {
-                artView.style.display = 'flex';
-                setTimeout(() => artView.classList.remove('hidden'), 10);
-            }
+            if (artView) artView.classList.remove('hidden');
             if (desktopContainer) desktopContainer.classList.add('hidden-tab');
         } else {
             videoBtn.classList.add('active');
             audioBtn.classList.remove('active');
-            if (artView) {
-                artView.classList.add('hidden');
-                setTimeout(() => artView.style.display = 'none', 300);
-            }
+            if (artView) artView.classList.add('hidden');
             if (desktopContainer) {
                 desktopContainer.classList.remove('hidden-tab');
                 desktopContainer.classList.add('in-mobile-overlay');
+                // Sync video position to media area
+                syncVideoPosition();
             }
         }
     };
+
+    function syncVideoPosition() {
+        const desktopContainer = document.getElementById('ytPlayerContainer');
+        const mediaArea = document.querySelector('.mobile-media-area');
+        if (desktopContainer && mediaArea && desktopContainer.classList.contains('in-mobile-overlay')) {
+            const rect = mediaArea.getBoundingClientRect();
+            desktopContainer.style.top = `${rect.top + rect.height / 2}px`;
+            desktopContainer.style.left = `${rect.left + rect.width / 2}px`;
+            desktopContainer.style.width = `${rect.width}px`;
+            desktopContainer.style.height = `${rect.width * (9/16)}px`;
+            desktopContainer.style.transform = 'translate(-50%, -50%)';
+        }
+    }
 
     window.checkMarquee = () => {
         const titleEl = document.getElementById('mobilePlayerTitle');
@@ -1752,10 +1784,17 @@
         if (!player || typeof player.getPlayerState !== 'function') return;
 
         const state = player.getPlayerState();
+        const mobileIcon = document.querySelector('#mobilePlayBtn i');
+        const desktopIcon = document.querySelector('#desktopPlayBtn i');
+
         if (state === YT.PlayerState.PLAYING) {
             player.pauseVideo();
+            if (mobileIcon) mobileIcon.className = 'fas fa-play';
+            if (desktopIcon) desktopIcon.className = 'fas fa-play';
         } else {
             player.playVideo();
+            if (mobileIcon) mobileIcon.className = 'fas fa-pause';
+            if (desktopIcon) desktopIcon.className = 'fas fa-pause';
         }
     };
 
@@ -2077,17 +2116,17 @@
             window.checkMarquee();
         }, 100);
 
-        // Direct source update to ensure iframe has the right video
-        const iframe = document.getElementById('adfree-player');
-        const videoSrc = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&modestbranding=1&rel=0&vq=hd720`;
-        
-        if (iframe.src !== videoSrc) {
-            iframe.src = videoSrc;
-        }
-
         // Initialize or Update YouTube Player API object
         if (!player || typeof player.loadVideoById !== 'function') {
             player = new YT.Player('adfree-player', {
+                videoId: videoId,
+                playerVars: {
+                    'autoplay': 1,
+                    'enablejsapi': 1,
+                    'modestbranding': 1,
+                    'rel': 0,
+                    'vq': 'hd720'
+                },
                 events: {
                     'onStateChange': onPlayerStateChange,
                     'onReady': (e) => {
@@ -2103,6 +2142,13 @@
                 console.warn("Re-initializing player due to error:", err);
                 player = new YT.Player('adfree-player', {
                     videoId: videoId,
+                    playerVars: {
+                        'autoplay': 1,
+                        'enablejsapi': 1,
+                        'modestbranding': 1,
+                        'rel': 0,
+                        'vq': 'hd720'
+                    },
                     events: {
                         'onStateChange': onPlayerStateChange,
                         'onReady': (e) => {
