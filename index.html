@@ -1137,13 +1137,25 @@
 
         // Try instances
         for (const instance of SEARCH_INSTANCES) {
-            // Try each instance with different proxies
+            // First, try direct fetch (some instances support CORS)
+            const targetUrl = `${instance}/search?q=${encodeURIComponent(query)}&filter=music_songs`;
+            
+            try {
+                console.log(`JaVibe: Trying direct fetch from ${instance}`);
+                const directResponse = await fetch(targetUrl, { signal: AbortSignal.timeout(3000) });
+                if (directResponse.ok) {
+                    const data = await directResponse.json();
+                    if (processSearchResults(data)) return;
+                }
+            } catch (e) {
+                console.log(`JaVibe: Direct fetch failed for ${instance}, trying proxies...`);
+            }
+
+            // If direct fails, try proxies
             for (const proxy of PROXIES) {
                 try {
                     console.log(`JaVibe: Trying ${instance} via ${proxy}`);
-                    
-                    const targetUrl = `${instance}/search?q=${encodeURIComponent(query)}&filter=music_songs`;
-                    const response = await fetch(`${proxy}${encodeURIComponent(targetUrl)}`);
+                    const response = await fetch(`${proxy}${encodeURIComponent(targetUrl)}`, { signal: AbortSignal.timeout(5000) });
                     
                     if (!response.ok) throw new Error(`Status ${response.status}`);
                     
@@ -1154,64 +1166,74 @@
                     try {
                         data = JSON.parse(text);
                     } catch (e) {
-                        throw new Error("Invalid JSON");
+                        // Some proxies wrap the response in their own JSON
+                        try {
+                            const wrapped = JSON.parse(text);
+                            data = wrapped.contents ? JSON.parse(wrapped.contents) : wrapped;
+                        } catch (e2) {
+                            throw new Error("Invalid JSON structure");
+                        }
                     }
                     
-                    const items = Array.isArray(data) ? data : (data.items || []);
-                    if (items.length === 0) continue;
-
-                    youtubeResults.innerHTML = '';
-                    
-                    items.forEach(item => {
-                        const videoId = item.url ? item.url.split('v=')[1] : null;
-                        if (!videoId) return;
-
-                        const title = item.title;
-                        const artist = item.uploaderName || 'Unknown Artist';
-                        const thumb = item.thumbnail;
-
-                        const card = document.createElement('div');
-                        card.style.cssText = `
-                            background: rgba(255, 255, 255, 0.03);
-                            border: 1px solid rgba(255, 255, 255, 0.05);
-                            border-radius: 12px;
-                            overflow: hidden;
-                            transition: all 0.2s ease;
-                            cursor: pointer;
-                        `;
-                        card.onmouseover = () => {
-                            card.style.transform = 'translateY(-5px)';
-                            card.style.background = 'rgba(255, 255, 255, 0.06)';
-                        };
-                        card.onmouseout = () => {
-                            card.style.transform = 'translateY(0)';
-                            card.style.background = 'rgba(255, 255, 255, 0.03)';
-                        };
-                        card.onclick = () => playSong(videoId, title, artist, thumb);
-
-                        card.innerHTML = `
-                            <div style="position: relative; aspect-ratio: 16/9; overflow: hidden;">
-                                <img src="${thumb}" style="width: 100%; height: 100%; object-fit: cover;">
-                                <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">YT Music</div>
-                            </div>
-                            <div style="padding: 12px;">
-                                <h5 style="margin: 0 0 4px; font-size: 0.9rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: white;">${title}</h5>
-                                <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">${artist}</p>
-                            </div>
-                        `;
-                        youtubeResults.appendChild(card);
-                    });
-
-                    youtubeSearchBtn.disabled = false;
-                    youtubeSearchBtn.textContent = "Search";
-                    return;
+                    if (processSearchResults(data)) return;
 
                 } catch (error) {
-                    console.warn(`JaVibe: ${instance} failed with proxy:`, error.message);
+                    console.warn(`JaVibe: ${instance} failed with proxy ${proxy}:`, error.message);
                     lastError = error;
                     continue; 
                 }
             }
+        }
+
+        function processSearchResults(data) {
+            const items = Array.isArray(data) ? data : (data.items || []);
+            if (items.length === 0) return false;
+
+            youtubeResults.innerHTML = '';
+            
+            items.forEach(item => {
+                const videoId = item.url ? item.url.split('v=')[1] : (item.videoId || null);
+                if (!videoId) return;
+
+                const title = item.title;
+                const artist = item.uploaderName || item.author || 'Unknown Artist';
+                const thumb = item.thumbnail || (item.thumbnails ? item.thumbnails[0].url : '');
+
+                const card = document.createElement('div');
+                card.style.cssText = `
+                    background: rgba(255, 255, 255, 0.03);
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                    border-radius: 12px;
+                    overflow: hidden;
+                    transition: all 0.2s ease;
+                    cursor: pointer;
+                `;
+                card.onmouseover = () => {
+                    card.style.transform = 'translateY(-5px)';
+                    card.style.background = 'rgba(255, 255, 255, 0.06)';
+                };
+                card.onmouseout = () => {
+                    card.style.transform = 'translateY(0)';
+                    card.style.background = 'rgba(255, 255, 255, 0.03)';
+                };
+                card.onclick = () => playSong(videoId, title, artist, thumb);
+
+                card.innerHTML = `
+                    <div style="position: relative; aspect-ratio: 16/9; overflow: hidden;">
+                        <img src="${thumb}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">YT Music</div>
+                    </div>
+                    <div style="padding: 12px;">
+                        <h5 style="margin: 0 0 4px; font-size: 0.9rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: white;">${title}</h5>
+                        <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">${artist}</p>
+                    </div>
+                `;
+                youtubeResults.appendChild(card);
+            });
+
+            youtubeSearchBtn.disabled = false;
+            youtubeSearchBtn.textContent = "Search";
+            return true;
         }
 
         // If we reach here, all instances failed
@@ -1242,6 +1264,7 @@
             height: '0',
             width: '0',
             videoId: '',
+            host: 'https://www.youtube-nocookie.com',
             playerVars: {
                 'autoplay': 0,
                 'controls': 0,
@@ -1249,7 +1272,8 @@
                 'fs': 0,
                 'rel': 0,
                 'showinfo': 0,
-                'modestbranding': 1
+                'modestbranding': 1,
+                'origin': window.location.origin
             },
             events: {
                 'onStateChange': onPlayerStateChange
