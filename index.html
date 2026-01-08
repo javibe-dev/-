@@ -1161,7 +1161,7 @@
     }
 
     // --- SPOTIFY INTEGRATION ---
-    const SPOTIFY_CLIENT_ID = "04261d76387040718664f3316e6d762e"; // Replace with your actual Client ID if needed
+    let SPOTIFY_CLIENT_ID = localStorage.getItem('spotify_client_id') || "55afa568f2f74d2f8235de04285fa817";
     const REDIRECT_URI = window.location.origin + window.location.pathname;
     const SCOPES = "user-read-private user-read-email user-library-read streaming";
     
@@ -1175,11 +1175,26 @@
     const spotifyUserImg = document.getElementById('spotifyUserImg');
     const spotifyUserName = document.getElementById('spotifyUserName');
 
+    // Function to update Client ID
+    function setSpotifyClientId() {
+        const newId = prompt("Please enter your Spotify Client ID:", SPOTIFY_CLIENT_ID);
+        if (newId) {
+            SPOTIFY_CLIENT_ID = newId.trim();
+            localStorage.setItem('spotify_client_id', SPOTIFY_CLIENT_ID);
+            alert("Spotify Client ID updated! Please try connecting again.");
+        }
+    }
+
     // Handle Spotify Auth Redirect
     function checkSpotifyAuth() {
         const hash = window.location.hash.substring(1);
         const params = new URLSearchParams(hash);
         const accessToken = params.get('access_token');
+        const error = params.get('error');
+
+        if (error === 'invalid_client') {
+            alert("Spotify says 'Invalid Client'. Please click 'Connect' again and make sure your Client ID is correct.");
+        }
         
         if (accessToken) {
             spotifyAccessToken = accessToken;
@@ -1221,6 +1236,13 @@
     }
 
     function handleSpotifyLogin() {
+        if (SPOTIFY_CLIENT_ID === "04261d76387040718664f3316e6d762e") {
+            const wantUpdate = confirm("The current Spotify Client ID might be invalid. Would you like to enter your own Client ID first?\n\nYou can get one from developer.spotify.com");
+            if (wantUpdate) {
+                setSpotifyClientId();
+                return; // Let them click connect again after updating
+            }
+        }
         const authUrl = `https://accounts.spotify.com/authorize?client_id=${SPOTIFY_CLIENT_ID}&response_type=token&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&scope=${encodeURIComponent(SCOPES)}`;
         window.location.href = authUrl;
     }
