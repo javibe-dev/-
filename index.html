@@ -1156,19 +1156,41 @@
     // --- DESKTOP SPOOFING FOR MOBILE ---
     function forceDesktopMode() {
         if (window.innerWidth < 1024) {
-            const viewport = document.querySelector('meta[name="viewport"]');
-            if (viewport) {
-                viewport.setAttribute('content', 'width=1024');
+            // 1. Force the browser to think it's a 1024px wide desktop
+            let viewport = document.querySelector('meta[name="viewport"]');
+            if (!viewport) {
+                viewport = document.createElement('meta');
+                viewport.name = "viewport";
+                document.head.appendChild(viewport);
             }
-            
-            const scale = window.screen.width / 1024;
+            viewport.setAttribute('content', 'width=1024, initial-scale=1');
+
+            // 2. Lock Aspect Ratio and Scale UI down to fit phone screen
+            const screenWidth = window.screen.width;
+            const screenHeight = window.screen.height;
+            const scale = screenWidth / 1024;
+
             document.documentElement.style.width = '1024px';
+            document.documentElement.style.height = `${screenHeight / scale}px`;
             document.documentElement.style.overflowX = 'hidden';
-            // We don't use transform on body as it breaks fixed positioning, 
-            // just forcing the width often tricks the SDK initialization.
+            
+            // Use transform to shrink the "desktop" down to mobile size
+            document.body.style.width = '1024px';
+            document.body.style.transform = `scale(${scale})`;
+            document.body.style.transformOrigin = '0 0';
+            document.body.style.margin = '0';
+            document.body.style.padding = '0';
+            
+            // Lock height to prevent vertical stretching
+            document.body.style.height = `${100 / scale}vh`;
+            
+            console.log(`Micro-Desktop Active: Scaled to ${scale.toFixed(2)}`);
         }
     }
     forceDesktopMode();
+    // Re-run on orientation change
+    window.addEventListener('resize', forceDesktopMode);
+    window.addEventListener('orientationchange', () => setTimeout(forceDesktopMode, 200));
 
     // --- SPOTIFY INTEGRATION (PKCE FLOW) ---
     let SPOTIFY_CLIENT_ID = localStorage.getItem('spotify_client_id') || "55afa568f2f74d2f8235de04285fa817";
