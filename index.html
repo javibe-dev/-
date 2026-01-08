@@ -1153,6 +1153,23 @@
         return `${mins}:${secs.toString().padStart(2, '0')}`;
     }
 
+    // --- DESKTOP SPOOFING FOR MOBILE ---
+    function forceDesktopMode() {
+        if (window.innerWidth < 1024) {
+            const viewport = document.querySelector('meta[name="viewport"]');
+            if (viewport) {
+                viewport.setAttribute('content', 'width=1024');
+            }
+            
+            const scale = window.screen.width / 1024;
+            document.documentElement.style.width = '1024px';
+            document.documentElement.style.overflowX = 'hidden';
+            // We don't use transform on body as it breaks fixed positioning, 
+            // just forcing the width often tricks the SDK initialization.
+        }
+    }
+    forceDesktopMode();
+
     // --- SPOTIFY INTEGRATION (PKCE FLOW) ---
     let SPOTIFY_CLIENT_ID = localStorage.getItem('spotify_client_id') || "55afa568f2f74d2f8235de04285fa817";
     
@@ -1503,7 +1520,7 @@
             });
         };
 
-        // 1. Try JaVibe Player (SDK - Desktop only)
+        // 1. Try JaVibe Player (SDK - FORCED ON ALL DEVICES)
         if (spotifyAccessToken && spotifyDeviceId) {
             const res = await playOnDevice(spotifyDeviceId);
             if (res.ok) {
@@ -1512,23 +1529,21 @@
             }
         }
 
-        // 2. FORCE-ACTIVE MOBILE SYNC (The "F*** the Embed" Strategy)
+        // 2. FORCE-ACTIVE MOBILE SYNC
         if (spotifyAccessToken) {
             const devices = await getSpotifyDevices();
-            // Look for any device, prioritize "Smartphone" or the one that's active
-            const targetDevice = devices.find(d => d.type.toLowerCase() === 'smartphone') || 
-                               devices.find(d => d.is_active) || 
+            // In Desktop-Spoof mode, we aggressively target ANY device found
+            const targetDevice = devices.find(d => d.is_active) || 
+                               devices.find(d => d.type.toLowerCase() === 'smartphone') || 
                                devices[0];
             
             if (targetDevice) {
-                console.log(`Forcing sync to ${targetDevice.name} (${targetDevice.type})`);
-                // Force a transfer first to "wake up" the device connection
+                console.log(`Forcing sync to ${targetDevice.name}`);
                 await transferSpotifyPlayback(targetDevice.id);
                 
-                // Now play the track
                 const res = await playOnDevice(targetDevice.id);
                 if (res.ok) {
-                    return finalizePlayback(trackId, true); // true = hide the "Preview" text if possible
+                    return finalizePlayback(trackId, true);
                 }
             }
         }
