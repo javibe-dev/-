@@ -1040,6 +1040,8 @@
                 dashboardView.style.display = 'none';
                 authView.style.display = 'flex';
                 setTimeout(() => authView.classList.add('active'), 50);
+                // Re-initialize buttons just in case
+                if (typeof initAuthButtons === 'function') initAuthButtons();
             }, 400);
         }
     });
@@ -1080,7 +1082,18 @@
     };
 
     // --- DASHBOARD BUTTON ACTIONS ---
-    window.handleLogout = () => signOut(auth);
+    window.handleLogout = async () => {
+        try {
+            await signOut(auth);
+            // Clear any local data if needed
+            localStorage.removeItem('spotify_access_token');
+            // Reload to ensure a clean state
+            window.location.reload();
+        } catch (error) {
+            console.error("Logout Error:", error);
+            alert("Error signing out. Please try again.");
+        }
+    };
     window.handlePremium = () => alert("Redirecting to Premium Upgrade page...");
     window.handleUsernameChange = () => {
         const newName = prompt("Enter your new display name:");
@@ -1476,59 +1489,64 @@
         console.log(`Auth Message: ${msg}`);
     }
 
-    const signupBtn = document.getElementById('signupBtn');
-    const loginBtn = document.getElementById('loginBtn');
+    function initAuthButtons() {
+        const signupBtn = document.getElementById('signupBtn');
+        const loginBtn = document.getElementById('loginBtn');
 
-    if (signupBtn) {
-        signupBtn.onclick = async () => {
-            const firstName = document.getElementById('firstName').value;
-            const lastName = document.getElementById('lastName').value;
-            const email = document.getElementById('signupEmail').value;
-            const password = document.getElementById('signupPassword').value;
-            const confirm = document.getElementById('confirmPassword').value;
+        if (signupBtn) {
+            signupBtn.onclick = async () => {
+                const firstName = document.getElementById('firstName').value;
+                const lastName = document.getElementById('lastName').value;
+                const email = document.getElementById('signupEmail').value;
+                const password = document.getElementById('signupPassword').value;
+                const confirm = document.getElementById('confirmPassword').value;
 
-            if (!firstName || !lastName || !email || !password || password !== confirm) {
-                return showMessage("Check all fields and password match", true);
-            }
+                if (!firstName || !lastName || !email || !password || password !== confirm) {
+                    return showMessage("Check all fields and password match", true);
+                }
 
-            signupBtn.disabled = true;
-            signupBtn.textContent = "Creating...";
+                signupBtn.disabled = true;
+                signupBtn.textContent = "Creating...";
 
-            try {
-                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                await updateProfile(userCredential.user, { displayName: `${firstName} ${lastName}` });
-                await sendEmailVerification(userCredential.user);
-                showMessage("Verification email sent! Please check your inbox.");
-            } catch (error) {
-                showMessage(error.message, true);
-            } finally {
-                signupBtn.disabled = false;
-                signupBtn.textContent = "Create Account";
-            }
-        };
+                try {
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    await updateProfile(userCredential.user, { displayName: `${firstName} ${lastName}` });
+                    await sendEmailVerification(userCredential.user);
+                    showMessage("Verification email sent! Please check your inbox.");
+                } catch (error) {
+                    showMessage(error.message, true);
+                } finally {
+                    signupBtn.disabled = false;
+                    signupBtn.textContent = "Create Account";
+                }
+            };
+        }
+
+        if (loginBtn) {
+            loginBtn.onclick = async () => {
+                const email = document.getElementById('loginEmail').value;
+                const password = document.getElementById('loginPassword').value;
+
+                if (!email || !password) return showMessage("Please enter email and password", true);
+
+                loginBtn.disabled = true;
+                loginBtn.textContent = "Signing In...";
+
+                try {
+                    await signInWithEmailAndPassword(auth, email, password);
+                    // onAuthStateChanged handles the rest
+                } catch (error) {
+                    showMessage(error.message, true);
+                } finally {
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = "Sign In";
+                }
+            };
+        }
     }
 
-    if (loginBtn) {
-        loginBtn.onclick = async () => {
-            const email = document.getElementById('loginEmail').value;
-            const password = document.getElementById('loginPassword').value;
-
-            if (!email || !password) return showMessage("Please enter email and password", true);
-
-            loginBtn.disabled = true;
-            loginBtn.textContent = "Signing In...";
-
-            try {
-                await signInWithEmailAndPassword(auth, email, password);
-                // onAuthStateChanged handles the rest
-            } catch (error) {
-                showMessage(error.message, true);
-            } finally {
-                loginBtn.disabled = false;
-                loginBtn.textContent = "Sign In";
-            }
-        };
-    }
+    // Initial call
+    initAuthButtons();
 </script>
 
 </body>
