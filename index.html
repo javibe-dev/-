@@ -1458,12 +1458,11 @@
         <iframe id="adfree-player" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
     </div>
 
-    <!-- Mobile Full-screen Player Overlay -->
     <div id="mobilePlayerOverlay">
-        <div class="mobile-player-header" onclick="toggleMobilePlayer(false)" style="cursor: pointer;">
-            <!-- Collapse button removed on mobile as requested -->
-            <div style="width: 44px;"></div> 
-            <div class="mobile-player-tabs" onclick="event.stopPropagation()">
+        <!-- FORCE: Clicking the entire top header closes the player on mobile -->
+        <div class="mobile-player-header" onclick="toggleMobilePlayer(false)" style="cursor: pointer; position: relative;">
+            <!-- NO BUTTONS HERE AT ALL -->
+            <div class="mobile-player-tabs" onclick="event.stopPropagation()" style="position: absolute; left: 50%; transform: translateX(-50%);">
                 <button id="mobileTabAudio" class="mobile-tab-btn active" onclick="switchMobileTab('audio')">
                     <i class="fas fa-headphones"></i> Audio
                 </button>
@@ -1471,9 +1470,7 @@
                     <i class="fas fa-play-circle"></i> Video
                 </button>
             </div>
-            <button class="mobile-secondary-btn">
-                <i class="fas fa-ellipsis-v"></i>
-            </button>
+            <!-- NO BUTTONS HERE AT ALL -->
         </div>
 
         <div class="mobile-player-content">
@@ -2151,6 +2148,9 @@
             resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">No results found.</p>`;
             return;
         }
+
+        const isMobile = window.innerWidth <= 768;
+
         results.forEach(item => {
             const card = document.createElement('div');
             card.className = 'music-card';
@@ -2160,13 +2160,18 @@
             const titleText = item.title || "Unknown Title";
             const authorText = item.author || "YouTube Content";
 
-            card.innerHTML = `
-                <img src="${thumbUrl}" alt="${titleText}" onerror="this.src='https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg'">
-                <div class="music-card-content">
-                    <h5>${titleText}</h5>
-                    <p>${authorText}</p>
-                </div>
-            `;
+            if (isMobile) {
+                // FORCE: No title, no artist, no nothing on mobile. ONLY THUMBNAIL.
+                card.innerHTML = `<img src="${thumbUrl}" alt="${titleText}" onerror="this.src='https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg'">`;
+            } else {
+                card.innerHTML = `
+                    <img src="${thumbUrl}" alt="${titleText}" onerror="this.src='https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg'">
+                    <div class="music-card-content">
+                        <h5>${titleText}</h5>
+                        <p>${authorText}</p>
+                    </div>
+                `;
+            }
             resultsEl.appendChild(card);
         });
     }
