@@ -1339,28 +1339,42 @@
         `;
 
         try {
-            // Using a more reliable CORS proxy + YouTube search scrape
-            // We'll try multiple sources
-            const searchUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&pbj=1`)}`;
+            // Using corsproxy.io - it's generally more stable for GitHub Pages origins
+            const searchUrl = `https://corsproxy.io/?${encodeURIComponent(`https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`)}`;
             const response = await fetch(searchUrl);
-            const data = await response.json();
-            const html = data.contents;
+            const html = await response.text();
 
-            // Simple regex-based extraction for YouTube search results (ytsearch style)
+            // More robust regex for raw HTML (ytsearch style)
+            // This looks for the videoId, thumbnail, title, and channel in the initial data blob
             const regex = /"videoRenderer":\{"videoId":"([^"]+)","thumbnail":\{"thumbnails":\[\{"url":"([^"]+)"[^}]+\]\},"title":\{"runs":\[\{"text":"([^"]+)"\}\][^}]+\},"longBylineText":\{"runs":\[\{"text":"([^"]+)"/g;
             let match;
             const results = [];
             
             while ((match = regex.exec(html)) !== null && results.length < 20) {
-                results.push({
-                    videoId: match[1],
-                    thumb: match[2].split('?')[0],
-                    title: match[3].replace(/\\u0026/g, '&'),
-                    author: match[4]
-                });
+                const videoId = match[1];
+                const title = match[3].replace(/\\u0026/g, '&').replace(/\\"/g, '"');
+                const author = match[4].replace(/\\u0026/g, '&');
+                const thumb = match[2].split('?')[0];
+
+                results.push({ videoId, thumb, title, author });
             }
 
-            if (results.length === 0) throw new Error("Scraper returned no results.");
+            if (results.length === 0) {
+                // Try an even broader regex if the first one fails (YouTube changes HTML often)
+                const altRegex = /"videoId":"([^"]+)","thumbnail":\{"thumbnails":\[\{"url":"([^"]+)"[^}]+\]\},"title":\{"runs":\[\{"text":"([^"]+)"\}\]/g;
+                while ((match = altRegex.exec(html)) !== null && results.length < 20) {
+                    if (!results.find(r => r.videoId === match[1])) {
+                        results.push({
+                            videoId: match[1],
+                            thumb: match[2].split('?')[0],
+                            title: match[3].replace(/\\u0026/g, '&'),
+                            author: "YouTube"
+                        });
+                    }
+                }
+            }
+
+            if (results.length === 0) throw new Error("No results found in YouTube response.");
 
             resultsEl.innerHTML = '';
             results.forEach(item => {
@@ -1368,7 +1382,7 @@
                 card.className = 'music-card';
                 card.onclick = () => playYouTubeVideo(item.videoId, item.title, item.author, item.thumb);
                 card.innerHTML = `
-                    <img src="${item.thumb}" alt="${item.title}">
+                    <img src="${item.thumb}" alt="${item.title}" onerror="this.src='https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg'">
                     <div class="music-card-content">
                         <h5>${item.title}</h5>
                         <p>${item.author}</p>
@@ -1379,26 +1393,29 @@
 
         } catch (error) {
             console.error("Scraper Error:", error);
-            // Fallback to Invidious API with a proxy if direct scrape fails
+            // Last resort: Invidious API via proxy
             try {
-                const invidiousUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(`https://invidious.snopyta.org/api/v1/search?q=${encodeURIComponent(query)}&type=video`)}`;
+                const invidiousUrl = `https://corsproxy.io/?${encodeURIComponent(`https://vid.puffyan.us/api/v1/search?q=${encodeURIComponent(query)}&type=video`)}`;
                 const response = await fetch(invidiousUrl);
-                const data = await response.json();
-                const items = JSON.parse(data.contents);
+                const items = await response.json();
                 
-                resultsEl.innerHTML = '';
-                items.forEach(item => {
-                    const thumb = `https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg`;
-                    const card = document.createElement('div');
-                    card.className = 'music-card';
-                    card.onclick = () => playYouTubeVideo(item.videoId, item.title, item.author, thumb);
-                    card.innerHTML = `<img src="${thumb}"> <div class="music-card-content"><h5>${item.title}</h5><p>${item.author}</p></div>`;
-                    resultsEl.appendChild(card);
-                });
+                if (Array.isArray(items) && items.length > 0) {
+                    resultsEl.innerHTML = '';
+                    items.forEach(item => {
+                        const thumb = `https://img.youtube.com/vi/${item.videoId}/hqdefault.jpg`;
+                        const card = document.createElement('div');
+                        card.className = 'music-card';
+                        card.onclick = () => playYouTubeVideo(item.videoId, item.title, item.author, thumb);
+                        card.innerHTML = `<img src="${thumb}"> <div class="music-card-content"><h5>${item.title}</h5><p>${item.author}</p></div>`;
+                        resultsEl.appendChild(card);
+                    });
+                } else {
+                    throw new Error("Empty fallback results");
+                }
             } catch (e) {
                 resultsEl.innerHTML = `
                     <div style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">
-                        <p>Search failed. Your browser/network might be blocking the CORS proxy.</p>
+                        <p>Search failed. Your network is blocking all bypass methods.</p>
                         <p style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px;">Error: ${e.message}</p>
                     </div>
                 `;
