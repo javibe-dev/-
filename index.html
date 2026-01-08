@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>JaVibe</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #6366f1;
+            --primary-hover: #4f46e5;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --text-main: #ffffff;
+            --text-muted: rgba(255, 255, 255, 0.6);
+            --bg-dark: #09090b;
+            --sidebar-bg: #111113;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Outfit', sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: var(--bg-dark);
+            color: var(--text-main);
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Snowflake Animation */
+        .snowflake {
+            position: fixed;
+            top: -10px;
+            color: white;
+            font-size: 1em;
+            pointer-events: none;
+            z-index: 100;
+            user-select: none;
+            animation: fall linear infinite;
+        }
+
+        @keyframes fall {
+            to {
+                transform: translateY(105vh) translateX(20px);
+            }
+        }
+
+        /* View Management */
+        .view {
+            display: none;
+            height: 100vh;
+            width: 100vw;
+            opacity: 0;
+            transition: opacity 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .view.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        /* --- AUTH VIEW STYLES --- */
+        #authView {
+            justify-content: center;
+            align-items: center;
+            background: #09090b;
+            padding: 20px;
+        }
+
+        .bg-blob {
+            position: absolute;
+            width: 500px;
+            height: 500px;
+            background: radial-gradient(circle, rgba(99, 102, 241, 0.4) 0%, rgba(99, 102, 241, 0) 70%);
+            border-radius: 50%;
+            filter: blur(60px);
+            z-index: 0;
+            animation: move 25s infinite alternate;
+        }
+        .bg-blob.one { top: -100px; left: -100px; }
+        .bg-blob.two { bottom: -150px; right: -100px; }
+        
+        @keyframes move {
+            from { transform: translate(0, 0) scale(1); }
+            to { transform: translate(100px, 100px) scale(1.2); }
+        }
+
+        .container {
+            position: relative;
+            z-index: 10;
+            width: 90%; /* Better default for most screens */
+            max-width: 440px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px) saturate(180%);
+            -webkit-backdrop-filter: blur(20px) saturate(180%);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            overflow: hidden;
+            will-change: transform, opacity;
+        }
+
+        .form-wrapper {
+            display: flex;
+            width: 200%;
+            transition: transform 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+            will-change: transform;
+        }
+
+        .form-content {
+            width: 50%;
+            padding: 2.5rem;
+            flex-shrink: 0;
+            transition: opacity 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+        }
+
+        .show-signup .form-wrapper { transform: translateX(-50%); }
+
+        /* --- DASHBOARD VIEW STYLES --- */
+        #dashboardView {
+            display: none;
+            background: #09090b;
+            flex-direction: row;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: #111113;
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            display: flex;
+            flex-direction: column;
+            padding: 1.25rem;
+            z-index: 100;
+            height: 100vh;
+            height: 100svh; /* Better mobile height */
+            transition: transform 0.3s ease;
+            overflow-y: auto;
+            position: sticky;
+            top: 0;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: min-content;
+        }
+
+        .sidebar-footer {
+            margin-top: 2rem;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-bottom: 10px;
+        }
+
+        .logo-section {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 2rem;
+            padding: 0 10px;
+        }
+
+        .logo-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 4px;
+        }
+
+        .logo-icon {
+            width: 28px;
+            height: 28px;
+            background: #3b82f6;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 0.9rem;
+        }
+
+        .logo-text {
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .logo-subtitle {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-left: 2px;
+        }
+
+        .collapse-btn {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            width: fit-content;
+            margin-top: 15px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .nav-section {
+            margin-bottom: 1.5rem;
+        }
+
+        .nav-label {
+            color: var(--text-muted);
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+            padding-left: 10px;
+            font-weight: 600;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 12px;
+            color: var(--text-muted);
+            text-decoration: none;
+            border-radius: 8px;
+            margin-bottom: 2px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .nav-item-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .nav-item i { width: 18px; font-size: 0.9rem; }
+
+        .nav-item:hover {
+            background: rgba(255, 255, 255, 0.03);
+            color: var(--text-main);
+        }
+
+        .nav-item.active {
+            background: rgba(59, 130, 246, 0.1);
+            color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.2);
+        }
+
+        .nav-arrow { font-size: 0.7rem; opacity: 0.5; }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 2rem 3rem;
+            overflow-y: auto;
+            position: relative;
+            z-index: 5;
+            height: 100vh;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-bottom: 2rem;
+        }
+
+        .header-icons {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-left: 10px;
+        }
+
+        .header-icon-btn {
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 1.1rem;
+            transition: color 0.2s;
+        }
+        .header-icon-btn:hover { color: var(--text-main); }
+
+        .user-profile-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(59, 130, 246, 0.1);
+            padding: 5px 12px;
+            border-radius: 20px;
+            cursor: pointer;
+        }
+
+        .user-avatar {
+            width: 24px;
+            height: 24px;
+            background: #6366f1;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .dashboard-header {
+            margin-bottom: 2rem;
+        }
+
+        .dashboard-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            font-size: 2.2rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .dashboard-subtitle {
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+        }
+
+        /* Generic Components */
+        .form-group { margin-bottom: 1.25rem; }
+        input {
+            width: 100%;
+            padding: 0.85rem 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--glass-border);
+            border-radius: 12px;
+            color: white;
+            outline: none;
+            transition: all 0.3s ease;
+        }
+        input:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15); }
+
+        .primary-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 0.7rem 1.25rem; /* Smaller padding */
+            border-radius: 10px; /* Slightly smaller radius */
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.9rem; /* Smaller font */
+            transition: all 0.3s ease;
+        }
+        .primary-btn:hover { background: var(--primary-hover); transform: translateY(-1px); }
+
+        #message { margin-top: 1rem; text-align: center; font-size: 0.9rem; }
+        .error { color: #fda4af; }
+        .success { color: #6ee7b7; }
+
+        /* Mobile Menu Toggle */
+        .menu-toggle {
+            display: none;
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        /* Hide menu toggle when auth view is active */
+        #authView.active ~ .menu-toggle,
+        #loadingScreen:not(.hidden) ~ .menu-toggle {
+            display: none !important;
+        }
+
+        /* Center auth container better on mobile */
+        @media (max-width: 480px) {
+            .discord-bar {
+                padding: 10px 14px !important;
+                gap: 10px !important;
+            }
+            .discord-bar h4 {
+                font-size: 0.9rem !important;
+            }
+            .discord-bar p {
+                font-size: 0.7rem !important;
+            }
+            .discord-bar .primary-btn {
+                 padding: 0.4rem 0.8rem !important;
+                 font-size: 0.75rem !important;
+             }
+             .discord-icon-container {
+                 width: 30px !important;
+                 height: 30px !important;
+             }
+             .discord-bar i.fab.fa-discord {
+                font-size: 16px !important;
+            }
+
+            #authView {
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                padding: 1.5rem; /* Consistent padding */
+                width: 100%;
+                min-height: 100svh;
+                overflow: hidden; /* Prevent random scrolling */
+                background: var(--bg-dark);
+            }
+            .container {
+                margin: 0;
+                width: 100%;
+                max-width: 100%; /* Force it to fill the padding width */
+                border-radius: 24px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            }
+            .form-content {
+                padding: 2.5rem 1.5rem;
+            }
+        }
+        @media (max-width: 1024px) {
+            .sidebar {
+                position: fixed;
+                left: -260px;
+                transition: transform 0.3s ease;
+            }
+            .sidebar.open {
+                transform: translateX(260px);
+            }
+            .main-content {
+                padding: 5rem 1.5rem 2rem;
+            }
+            .menu-toggle {
+                display: block;
+            }
+            .dashboard-title {
+                font-size: 1.8rem;
+            }
+        }
+
+        @media (max-width: 480px) {
+            #authView {
+                padding: 10px;
+                align-items: flex-start;
+                padding-top: 5vh; /* Center it slightly better vertically on small screens */
+                overflow-y: auto; /* Allow scrolling the whole view if form is tall */
+            }
+            .container {
+                border-radius: 20px;
+                max-width: 100%;
+                margin: 0 auto;
+                box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+            }
+            .form-content {
+                padding: 2rem 1.5rem;
+            }
+            .form-content h2 {
+                font-size: 1.75rem;
+                margin-bottom: 0.5rem;
+            }
+            .subtitle {
+                margin-bottom: 1.5rem;
+            }
+            .form-group {
+                margin-bottom: 1rem;
+            }
+            .dashboard-title {
+                font-size: 1.5rem;
+            }
+            .top-bar {
+                justify-content: center;
+                flex-wrap: wrap;
+                margin-bottom: 1rem;
+            }
+        }
+
+        /* --- LOADING SCREEN --- */
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--bg-dark);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease, visibility 0.5s ease;
+            padding: 20px;
+        }
+
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .discord-spinner {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            margin-bottom: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* The fragmented "breaking" effect layers */
+        .spinner-layer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            animation: discord-spin 1.8s cubic-bezier(0.7, 0, 0.3, 1) infinite;
+        }
+
+        /* Primary layer */
+        .spinner-layer.main {
+            z-index: 3;
+        }
+
+        /* Ghost/fragment layers that appear during the spin */
+        .spinner-layer.ghost-1 {
+            z-index: 2;
+            opacity: 0.4;
+            animation-delay: 0.05s;
+        }
+
+        .spinner-layer.ghost-2 {
+            z-index: 1;
+            opacity: 0.2;
+            animation-delay: 0.1s;
+        }
+
+        .discord-spinner svg {
+            width: 65px;
+            height: 65px;
+            fill: var(--primary);
+        }
+
+        @keyframes discord-spin {
+            0% { transform: rotate(0deg); }
+            50% { transform: rotate(360deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .tip-container {
+            width: 100%;
+            max-width: 320px;
+            text-align: center;
+            padding: 0 15px;
+        }
+
+        .tip-label {
+            color: var(--primary);
+            font-weight: 800;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            letter-spacing: 0.12em;
+            margin-bottom: 10px;
+        }
+
+        .tip-text {
+            color: var(--text-main);
+            font-size: 0.95rem;
+            line-height: 1.5;
+            opacity: 0.85;
+            font-weight: 400;
+        }
+
+        @media (max-width: 480px) {
+            .discord-spinner {
+                width: 60px;
+                height: 60px;
+            }
+            .discord-spinner i {
+                font-size: 3.5rem;
+            }
+            .tip-text {
+                font-size: 0.85rem;
+            }
+        }
+
+        #loadingScreen.hidden {
+            opacity: 0;
+            visibility: hidden;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Loading Screen -->
+    <div id="loadingScreen">
+        <div class="loading-container">
+            <div class="discord-spinner">
+                <!-- Main Layer -->
+                <div class="spinner-layer main">
+                    <svg viewBox="0 0 127.14 96.36">
+                        <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.06,72.06,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.71,32.65-1.82,56.6.39,80.21a105.73,105.73,0,0,0,32.17,16.15,77.7,77.7,0,0,0,6.89-11.11,68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1,105.25,105.25,0,0,0,32.19-16.14c2.64-27.38-4.52-51.06-19.1-72.13ZM42.45,65.69C36.18,65.69,31,60,31,53s5.12-12.67,11.41-12.67S54,46,53.86,53,48.74,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5.12-12.67,11.41-12.67S96.08,46,95.94,53,90.82,65.69,84.69,65.69Z"/>
+                    </svg>
+                </div>
+                <!-- Ghost Layers for "breaking" effect -->
+                <div class="spinner-layer ghost-1">
+                    <svg viewBox="0 0 127.14 96.36">
+                        <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.06,72.06,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.71,32.65-1.82,56.6.39,80.21a105.73,105.73,0,0,0,32.17,16.15,77.7,77.7,0,0,0,6.89-11.11,68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1,105.25,105.25,0,0,0,32.19-16.14c2.64-27.38-4.52-51.06-19.1-72.13ZM42.45,65.69C36.18,65.69,31,60,31,53s5.12-12.67,11.41-12.67S54,46,53.86,53,48.74,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5.12-12.67,11.41-12.67S96.08,46,95.94,53,90.82,65.69,84.69,65.69Z"/>
+                    </svg>
+                </div>
+                <div class="spinner-layer ghost-2">
+                    <svg viewBox="0 0 127.14 96.36">
+                        <path d="M107.7,8.07A105.15,105.15,0,0,0,81.47,0a72.06,72.06,0,0,0-3.36,6.83A97.68,97.68,0,0,0,49,6.83,72.06,72.06,0,0,0,45.64,0,105.89,105.89,0,0,0,19.39,8.09C2.71,32.65-1.82,56.6.39,80.21a105.73,105.73,0,0,0,32.17,16.15,77.7,77.7,0,0,0,6.89-11.11,68.42,68.42,0,0,1-10.85-5.18c.91-.66,1.8-1.34,2.66-2a75.57,75.57,0,0,0,64.32,0c.87.71,1.76,1.39,2.66,2a68.68,68.68,0,0,1-10.87,5.19,77,77,0,0,0,6.89,11.1,105.25,105.25,0,0,0,32.19-16.14c2.64-27.38-4.52-51.06-19.1-72.13ZM42.45,65.69C36.18,65.69,31,60,31,53s5.12-12.67,11.41-12.67S54,46,53.86,53,48.74,65.69,42.45,65.69Zm42.24,0C78.41,65.69,73.25,60,73.25,53s5.12-12.67,11.41-12.67S96.08,46,95.94,53,90.82,65.69,84.69,65.69Z"/>
+                    </svg>
+                </div>
+            </div>
+            <div class="tip-container">
+                <div class="tip-label">Did you know</div>
+                <div class="tip-text" id="tipText">Loading awesome things...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth View -->
+    <div id="authView" class="view active">
+        <div class="bg-blob one"></div>
+        <div class="bg-blob two"></div>
+        <div class="container" id="mainContainer">
+            <div class="form-wrapper">
+                <div class="form-content" id="loginView">
+                    <h2>Welcome Back</h2>
+                    <p class="subtitle">Enter your details to sign in</p>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="loginEmail" placeholder="name@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="loginPassword" placeholder="••••••••">
+                    </div>
+                    <button id="loginBtn" class="primary-btn" style="width: 100%;">Sign In</button>
+                    <p style="text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
+                        Don't have an account? <span id="toSignup" style="color: #3b82f6; cursor: pointer; font-weight: 600;">Create one</span>
+                    </p>
+                </div>
+                <div class="form-content" id="signupView">
+                    <h2>Create Account</h2>
+                    <p class="subtitle">Join JaVibe today</p>
+                    <div style="display: flex; gap: 12px;">
+                        <div class="form-group">
+                            <label>First Name</label>
+                            <input type="text" id="firstName" placeholder="John">
+                        </div>
+                        <div class="form-group">
+                            <label>Last Name</label>
+                            <input type="text" id="lastName" placeholder="Doe">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Email Address</label>
+                        <input type="email" id="signupEmail" placeholder="name@example.com">
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" id="signupPassword" placeholder="••••••••">
+                    </div>
+                    <div class="form-group">
+                        <label>Confirm Password</label>
+                        <input type="password" id="confirmPassword" placeholder="••••••••">
+                    </div>
+                    <button id="signupBtn" class="primary-btn" style="width: 100%;">Create Account</button>
+                    <p style="text-align: center; margin-top: 1.5rem; font-size: 0.9rem; color: var(--text-muted);">
+                        Already have an account? <span id="toLogin" style="color: #3b82f6; cursor: pointer; font-weight: 600;">Sign in</span>
+                    </p>
+                </div>
+            </div>
+            <div id="message"></div>
+        </div>
+    </div>
+
+    <!-- Mobile Menu Toggle -->
+    <button class="menu-toggle" id="menuToggle">
+        <i class="fas fa-bars"></i>
+    </button>
+
+    <!-- Dashboard View -->
+    <div id="dashboardView" class="view">
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-content">
+                <div class="logo-section">
+                    <div class="logo-header">
+                        <div class="logo-icon"><i class="fas fa-cube"></i></div>
+                        <span class="logo-text">JaVibe</span>
+                    </div>
+                    <span class="logo-subtitle">Music's come in a great hands.</span>
+                    <button class="collapse-btn"><i class="fas fa-angles-left"></i> Collapse</button>
+                </div>
+
+                <div class="nav-section">
+                    <p class="nav-label">Main</p>
+                    <div class="nav-item active" onclick="showSection('home')">
+                        <div class="nav-item-content"><i class="fas fa-home"></i> Home</div>
+                    </div>
+                    <div class="nav-item" onclick="showSection('dashboard')">
+                        <div class="nav-item-content"><i class="fab fa-youtube"></i> Dashboard</div>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <p class="nav-label">Account</p>
+                    <div class="nav-item" onclick="showSection('profile')">
+                        <div class="nav-item-content"><i class="fas fa-user"></i> Profile</div>
+                    </div>
+                    <div class="nav-item" onclick="showSection('settings')">
+                        <div class="nav-item-content"><i class="fas fa-cog"></i> Settings</div>
+                    </div>
+                </div>
+
+                <div class="nav-section">
+                    <p class="nav-label">System</p>
+                    <div class="nav-item" onclick="handleGenericAction('Node Status')">
+                        <div class="nav-item-content"><i class="fas fa-microchip"></i> Node Status</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="nav-item" onclick="handleLogout()">
+                    <div class="nav-item-content"><i class="fas fa-sign-out-alt"></i> Sign Out</div>
+                </div>
+                <p style="font-size: 0.65rem; color: var(--text-muted); margin-top: 10px; padding-left: 10px;">JaMusic Research and Coding Corp.</p>
+            </div>
+        </aside>
+
+        <main class="main-content">
+            <div class="top-bar">
+                <div class="header-icons">
+                    <i class="fas fa-globe header-icon-btn" onclick="window.open('https://javibe.vercel.app', '_blank')"></i>
+                    <div class="user-profile-badge" onclick="showSection('profile')">
+                        <div class="user-avatar" id="avatarLetter">U</div>
+                        <span style="font-size: 0.85rem;" id="headerUsername">User</span>
+                    </div>
+                </div>
+            </div>
+
+            <div id="homeSection">
+                <div class="dashboard-header">
+                    <h1 class="dashboard-title"><i class="fas fa-home" style="color: #3b82f6; font-size: 1.8rem;"></i> Home 🎄</h1>
+                    <p class="dashboard-subtitle">✨ Welcome to your personal space.</p>
+                </div>
+                <!-- ... existing content ... -->
+            </div>
+
+            <div id="dashboardSection" style="display: none;">
+                <div class="dashboard-header">
+                    <h1 class="dashboard-title"><i class="fab fa-youtube" style="color: #ff0000; font-size: 1.8rem;"></i> Dashboard</h1>
+                    <p class="dashboard-subtitle">🎵 Explore millions of songs and videos from YouTube.</p>
+                </div>
+
+                <div class="search-container" style="margin-bottom: 2rem;">
+                    <div style="position: relative; display: flex; gap: 10px;">
+                        <input type="text" id="youtubeSearchInput" placeholder="Search for songs, artists, or videos..." style="padding-right: 45px;">
+                        <button id="youtubeSearchBtn" class="primary-btn" style="white-space: nowrap;">Search</button>
+                    </div>
+                </div>
+
+                <div id="youtubeResults" class="results-grid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px;">
+                    <!-- Results will appear here -->
+                    <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">
+                        <i class="fab fa-youtube" style="font-size: 3rem; margin-bottom: 1rem; opacity: 0.2;"></i>
+                        <p>Search for something to see results</p>
+                    </div>
+                </div>
+
+                <!-- Music Player Bar (Hidden by default) -->
+                <div id="musicPlayerBar" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10, 10, 12, 0.95); backdrop-filter: blur(10px); border-top: 1px solid rgba(255, 255, 255, 0.05); padding: 12px 24px; z-index: 1000; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; align-items: center; gap: 15px; flex: 1; min-width: 0;">
+                        <img id="playerThumb" src="" style="width: 45px; height: 45px; border-radius: 8px; object-fit: cover; background: #222;">
+                        <div style="min-width: 0;">
+                            <h4 id="playerTitle" style="margin: 0; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: white;">Song Title</h4>
+                            <p id="playerArtist" style="margin: 0; font-size: 0.75rem; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Artist Name</p>
+                        </div>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; gap: 20px; flex: 1; justify-content: center;">
+                        <button onclick="togglePlayPause()" id="playPauseBtn" style="background: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s ease;">
+                            <i class="fas fa-pause" style="color: black; font-size: 1.1rem;"></i>
+                        </button>
+                    </div>
+
+                    <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
+                        <i class="fas fa-volume-up" style="font-size: 0.9rem; color: var(--text-muted);"></i>
+                        <input type="range" id="volumeSlider" min="0" max="100" value="100" style="width: 80px; accent-color: var(--primary);">
+                    </div>
+
+                    <!-- Hidden YouTube Player -->
+                    <div id="youtube-player-container" style="position: fixed; width: 300px; height: 300px; left: -10000px; top: -10000px; pointer-events: none;"></div>
+                </div>
+            </div>
+
+                <div class="discord-bar" style="background: #111113; border: 1px solid rgba(255, 255, 255, 0.05); color: white; padding: 12px 16px; border-radius: 16px; display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 2rem;">
+                    <div style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                        <div class="discord-icon-container" style="background: #5865f2; width: 34px; height: 34px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                            <i class="fab fa-discord" style="font-size: 18px;"></i>
+                        </div>
+                        <div style="min-width: 0;">
+                            <h4 style="margin: 0; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Join our Discord!</h4>
+                            <p style="margin: 0; color: var(--text-muted); font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Updates & support.</p>
+                        </div>
+                    </div>
+                    <a href="https://discord.gg/QYTgmVq96v" target="_blank" class="primary-btn" style="text-decoration: none; padding: 0.5rem 1rem; font-size: 0.8rem; flex-shrink: 0; white-space: nowrap;">Join Server</a>
+                </div>
+
+                <div class="welcome-card" style="background: #111113; border: 1px solid rgba(255, 255, 255, 0.05); padding: 2.5rem; border-radius: 20px; margin-bottom: 2rem;">
+                    <h2 style="margin-bottom: 1rem; font-size: 1.5rem;">Welcome to JaVibe, <span id="welcomeUser">User</span>! 👋</h2>
+                    <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem; max-width: 800px;">
+                        Ready to start your day with some freshly baked songs? JaVibe offers the best free 24/7 musics because we offer performance and the ability of not having to keep your phone on all-day! We do not take battery consumption.
+                    </p>
+                    <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.6; margin-bottom: 1.5rem;">
+                        We recommend you to join our Discord Server if you're looking to reach out for support! Our community is pretty welcoming and will help you get started in no time.
+                    </p>
+                    
+                    <div class="action-links" style="display: flex; gap: 25px; flex-wrap: wrap;">
+                        <a href="https://discord.gg/QYTgmVq96v" target="_blank" class="action-link" style="color: #3b82f6; text-decoration: none; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; font-weight: 600;">
+                            <i class="fab fa-discord"></i> Join our Discord Server!
+                        </a>
+                        <a href="#" class="action-link" onclick="handleUsernameChange()" style="color: var(--text-main); text-decoration: none; font-size: 0.9rem; display: flex; align-items: center; gap: 8px; opacity: 0.8;">
+                            Change your username
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div id="profileSection" style="display: none;">
+                <h2>User Profile</h2>
+                <div class="welcome-card" style="margin-top: 1.5rem;">
+                    <p><strong>Email:</strong> <span id="profileEmail">...</span></p>
+                    <p><strong>Display Name:</strong> <span id="profileName">...</span></p>
+                    <p><strong>Account Status:</strong> Verified</p>
+                </div>
+            </div>
+
+            <div id="settingsSection" style="display: none;">
+                <h2>Account Settings</h2>
+                <div class="welcome-card" style="margin-top: 1.5rem;">
+                    <p>Settings functionality is currently in development.</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { 
+        getAuth, 
+        createUserWithEmailAndPassword, 
+        signInWithEmailAndPassword, 
+        sendEmailVerification,
+        updateProfile,
+        onAuthStateChanged,
+        signOut
+    } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+
+    // --- KEEP FIREBASE CONFIG ---
+    const firebaseConfig = {
+          apiKey: "AIzaSyApKLZIjUZSQnKJCngvp0KZPYJf3zBNaCc",
+  authDomain: "jamusic-v2.firebaseapp.com",
+  projectId: "jamusic-v2",
+  storageBucket: "jamusic-v2.firebasestorage.app",
+  messagingSenderId: "765002295434",
+  appId: "1:765002295434:web:a4c9ba98c68dbcd84f2573"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+
+    // --- LOADING SCREEN LOGIC ---
+    const tips = [
+        "JaVibe is designed for speed and simplicity.",
+        "You can upgrade to Premium for exclusive features.",
+        "Our Discord community is always here to help!",
+        "Music sounds better when shared with friends.",
+        "You can change your username in the settings.",
+        "Node status shows you the real-time health of our systems.",
+        "JaVibe was built with passion for developers.",
+        "Check out our global website for more JaVibe updates."
+    ];
+
+    function initLoading() {
+        const loadingScreen = document.getElementById('loadingScreen');
+        const tipText = document.getElementById('tipText');
+        
+        // Pick a random tip
+        const randomTip = tips[Math.floor(Math.random() * tips.length)];
+        if (tipText) tipText.textContent = randomTip;
+
+        // Hide loading screen after 3 seconds
+        setTimeout(() => {
+            if (loadingScreen) {
+                loadingScreen.classList.add('hidden');
+            }
+        }, 3000);
+    }
+
+    // Initialize loading screen
+    initLoading();
+
+    // --- SNOWFLAKE LOGIC ---
+    function createSnowflake() {
+        const snowflake = document.createElement('div');
+        snowflake.classList.add('snowflake');
+        snowflake.innerHTML = '•';
+        snowflake.style.left = Math.random() * 100 + 'vw';
+        snowflake.style.animationDuration = Math.random() * 3 + 2 + 's';
+        snowflake.style.opacity = Math.random();
+        snowflake.style.fontSize = Math.random() * 10 + 10 + 'px';
+        
+        document.body.appendChild(snowflake);
+        
+        setTimeout(() => {
+            snowflake.remove();
+        }, 5000);
+    }
+    setInterval(createSnowflake, 100);
+
+    // --- VIEW MANAGEMENT ---
+    const authView = document.getElementById('authView');
+    const dashboardView = document.getElementById('dashboardView');
+    const welcomeUser = document.getElementById('welcomeUser');
+    const headerUsername = document.getElementById('headerUsername');
+    const avatarLetter = document.getElementById('avatarLetter');
+    const sidebar = document.getElementById('sidebar');
+    const menuToggle = document.getElementById('menuToggle');
+
+    // Mobile menu toggle
+    if (menuToggle && sidebar) {
+        menuToggle.onclick = () => {
+            sidebar.classList.toggle('open');
+            const icon = menuToggle.querySelector('i');
+            if (sidebar.classList.contains('open')) {
+                icon.classList.replace('fa-bars', 'fa-times');
+            } else {
+                icon.classList.replace('fa-times', 'fa-bars');
+            }
+        };
+    }
+
+    // Close sidebar on nav item click (mobile)
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.addEventListener('click', () => {
+            if (window.innerWidth <= 1024 && sidebar.classList.contains('open')) {
+                sidebar.classList.remove('open');
+                menuToggle.querySelector('i').classList.replace('fa-times', 'fa-bars');
+            }
+        });
+    });
+
+    // Global toggle function
+    window.toggleView = (showSignup) => {
+        const container = document.getElementById('mainContainer');
+        if (showSignup) {
+            container.classList.add('show-signup');
+        } else {
+            container.classList.remove('show-signup');
+        }
+    };
+
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            if (user.emailVerified) {
+                // Fully verified, show dashboard
+                authView.classList.remove('active');
+                setTimeout(() => {
+                    authView.style.display = 'none';
+                    dashboardView.style.display = 'flex';
+                    setTimeout(() => dashboardView.classList.add('active'), 50);
+                    
+                    const displayName = user.displayName || user.email.split('@')[0];
+                    welcomeUser.textContent = displayName;
+                    headerUsername.textContent = displayName;
+                    avatarLetter.textContent = displayName.charAt(0).toUpperCase();
+                    
+                    document.getElementById('profileEmail').textContent = user.email;
+                    document.getElementById('profileName').textContent = user.displayName || 'N/A';
+                }, 400);
+            } else {
+                // Logged in but not verified
+                authView.style.display = 'flex';
+                dashboardView.style.display = 'none';
+                authView.classList.add('active');
+                showMessage("Please verify your email! Check your inbox.", true);
+                
+                const msgDiv = document.getElementById('message');
+                if (!document.getElementById('refreshVerifyBtn')) {
+                    const btn = document.createElement('button');
+                    btn.id = 'refreshVerifyBtn';
+                    btn.textContent = "I've Verified (Refresh)";
+                    btn.className = 'primary-btn';
+                    btn.style.marginTop = '10px';
+                    btn.style.width = '100%';
+                    btn.onclick = () => location.reload();
+                    msgDiv.appendChild(btn);
+                }
+                console.log("JaVibe: User verification pending.");
+            }
+        } else {
+            // Logged out, show auth
+            dashboardView.classList.remove('active');
+            setTimeout(() => {
+                dashboardView.style.display = 'none';
+                authView.style.display = 'flex';
+                setTimeout(() => authView.classList.add('active'), 50);
+            }, 400);
+        }
+    });
+
+    // Event listeners for switching
+    document.getElementById('toSignup').onclick = () => toggleView(true);
+    document.getElementById('toLogin').onclick = () => toggleView(false);
+
+    window.showSection = (section) => {
+        document.getElementById('homeSection').style.display = 'none';
+        document.getElementById('dashboardSection').style.display = 'none';
+        document.getElementById('profileSection').style.display = 'none';
+        document.getElementById('settingsSection').style.display = 'none';
+        
+        const sectionId = `${section}Section`;
+        const targetSection = document.getElementById(sectionId);
+        if (targetSection) targetSection.style.display = 'block';
+        
+        // Update nav active state
+        document.querySelectorAll('.nav-item').forEach(item => item.classList.remove('active'));
+        const navItems = document.querySelectorAll('.nav-item');
+        navItems.forEach(item => {
+            if (item.getAttribute('onclick')?.includes(`'${section}'`)) {
+                item.classList.add('active');
+            }
+        });
+
+        // Update title and icon if dashboard section
+        if (section === 'dashboard') {
+            // Dashboard has its own title structure in the HTML
+        } else {
+            // For other sections, we could update the top title if needed
+        }
+    };
+
+    window.handleGenericAction = (action) => {
+        alert(`${action} functionality coming soon! This button is now linked.`);
+    };
+
+    // --- DASHBOARD BUTTON ACTIONS ---
+    window.handleLogout = () => signOut(auth);
+    window.handlePremium = () => alert("Redirecting to Premium Upgrade page...");
+    window.handleUsernameChange = () => {
+        const newName = prompt("Enter your new display name:");
+        if (newName) {
+            updateProfile(auth.currentUser, { displayName: newName })
+                .then(() => {
+                    alert("Username updated!");
+                    location.reload();
+                })
+                .catch(err => alert(err.message));
+        }
+    };
+
+    // --- YOUTUBE API INTEGRATION ---
+    const YOUTUBE_API_KEY = "AIzaSyApKLZIjUZSQnKJCngvp0KZPYJf3zBNaCc"; 
+    const youtubeSearchInput = document.getElementById('youtubeSearchInput');
+    const youtubeSearchBtn = document.getElementById('youtubeSearchBtn');
+    const youtubeResults = document.getElementById('youtubeResults');
+
+    async function searchYouTube(query) {
+        if (!query) return;
+        
+        youtubeSearchBtn.disabled = true;
+        youtubeSearchBtn.textContent = "Searching...";
+        youtubeResults.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
+                <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); width: 30px; height: 30px; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
+                <p>Fetching from YouTube...</p>
+            </div>
+        `;
+
+        try {
+            const response = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=12&q=${encodeURIComponent(query)}&type=video&key=${YOUTUBE_API_KEY}`);
+            const data = await response.json();
+
+            if (data.error) {
+                throw new Error(data.error.message);
+            }
+
+            youtubeResults.innerHTML = '';
+            
+            if (!data.items || data.items.length === 0) {
+                youtubeResults.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);"><p>No results found.</p></div>';
+                return;
+            }
+
+            data.items.forEach(item => {
+                const video = item.snippet;
+                const card = document.createElement('div');
+                card.style.cssText = `
+                    background: rgba(255, 255, 255, 0.03);
+                    border: 1px solid rgba(255, 255, 255, 0.05);
+                    border-radius: 12px;
+                    overflow: hidden;
+                    transition: all 0.2s ease;
+                    cursor: pointer;
+                `;
+                card.onmouseover = () => {
+                    card.style.transform = 'translateY(-5px)';
+                    card.style.background = 'rgba(255, 255, 255, 0.06)';
+                };
+                card.onmouseout = () => {
+                    card.style.transform = 'translateY(0)';
+                    card.style.background = 'rgba(255, 255, 255, 0.03)';
+                };
+                card.onclick = () => playSong(item.id.videoId, video.title, video.channelTitle, video.thumbnails.medium.url);
+
+                card.innerHTML = `
+                    <div style="position: relative; aspect-ratio: 16/9; overflow: hidden;">
+                        <img src="${video.thumbnails.medium.url}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">YouTube</div>
+                    </div>
+                    <div style="padding: 12px;">
+                        <h5 style="margin: 0 0 4px; font-size: 0.9rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: white;">${video.title}</h5>
+                        <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">${video.channelTitle}</p>
+                    </div>
+                `;
+                youtubeResults.appendChild(card);
+            });
+        } catch (error) {
+            console.error("YouTube API Error:", error);
+            youtubeResults.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: #fda4af;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                    <p>Failed to fetch results: ${error.message}</p>
+                </div>
+            `;
+        } finally {
+            youtubeSearchBtn.disabled = false;
+            youtubeSearchBtn.textContent = "Search";
+        }
+    }
+
+    // --- INTERNAL MUSIC PLAYER LOGIC ---
+    let player;
+    let isPlaying = false;
+
+    // Load YouTube IFrame API
+    const tag = document.createElement('script');
+    tag.src = "https://www.youtube.com/iframe_api";
+    const firstScriptTag = document.getElementsByTagName('script')[0];
+    firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+    window.onYouTubeIframeAPIReady = function() {
+        player = new YT.Player('youtube-player-container', {
+            height: '0',
+            width: '0',
+            videoId: '',
+            playerVars: {
+                'autoplay': 0,
+                'controls': 0,
+                'disablekb': 1,
+                'fs': 0,
+                'rel': 0,
+                'showinfo': 0,
+                'modestbranding': 1
+            },
+            events: {
+                'onStateChange': onPlayerStateChange
+            }
+        });
+    };
+
+    function onPlayerStateChange(event) {
+        const btn = document.getElementById('playPauseBtn');
+        if (event.data == YT.PlayerState.PLAYING) {
+            isPlaying = true;
+            btn.innerHTML = '<i class="fas fa-pause" style="color: black;"></i>';
+        } else {
+            isPlaying = false;
+            btn.innerHTML = '<i class="fas fa-play" style="color: black; margin-left: 3px;"></i>';
+        }
+    }
+
+    window.playSong = function(videoId, title, artist, thumb) {
+        if (!player) return;
+        player.loadVideoById(videoId);
+        document.getElementById('musicPlayerBar').style.display = 'flex';
+        document.getElementById('playerTitle').textContent = title;
+        document.getElementById('playerArtist').textContent = artist;
+        document.getElementById('playerThumb').src = thumb;
+        isPlaying = true;
+    };
+
+    window.togglePlayPause = function() {
+        if (!player) return;
+        if (isPlaying) {
+            player.pauseVideo();
+        } else {
+            player.playVideo();
+        }
+    };
+
+    document.getElementById('volumeSlider').addEventListener('input', (e) => {
+        if (player && player.setVolume) {
+            player.setVolume(e.target.value);
+        }
+    });
+
+    youtubeSearchBtn.onclick = () => searchYouTube(youtubeSearchInput.value);
+        youtubeSearchInput.onkeypress = (e) => {
+            if (e.key === 'Enter') searchYouTube(youtubeSearchInput.value);
+        };
+    // (removed stray closing brace)
+
+    // --- AUTH LOGIC ---
+    function showMessage(msg, isError = false) {
+        const div = document.getElementById('message');
+        if (!div) return;
+        div.textContent = msg;
+        div.className = isError ? 'error' : 'success';
+        div.style.display = 'block';
+        console.log(`Auth Message: ${msg}`);
+    }
+
+    const signupBtn = document.getElementById('signupBtn');
+    const loginBtn = document.getElementById('loginBtn');
+
+    if (signupBtn) {
+        signupBtn.onclick = async () => {
+            const firstName = document.getElementById('firstName').value;
+            const lastName = document.getElementById('lastName').value;
+            const email = document.getElementById('signupEmail').value;
+            const password = document.getElementById('signupPassword').value;
+            const confirm = document.getElementById('confirmPassword').value;
+
+            if (!firstName || !lastName || !email || !password || password !== confirm) {
+                return showMessage("Check all fields and password match", true);
+            }
+
+            signupBtn.disabled = true;
+            signupBtn.textContent = "Creating...";
+
+            try {
+                const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                await updateProfile(userCredential.user, { displayName: `${firstName} ${lastName}` });
+                await sendEmailVerification(userCredential.user);
+                showMessage("Verification email sent! Please check your inbox.");
+            } catch (error) {
+                showMessage(error.message, true);
+            } finally {
+                signupBtn.disabled = false;
+                signupBtn.textContent = "Create Account";
+            }
+        };
+    }
+
+    if (loginBtn) {
+        loginBtn.onclick = async () => {
+            const email = document.getElementById('loginEmail').value;
+            const password = document.getElementById('loginPassword').value;
+
+            if (!email || !password) return showMessage("Please enter email and password", true);
+
+            loginBtn.disabled = true;
+            loginBtn.textContent = "Signing In...";
+
+            try {
+                await signInWithEmailAndPassword(auth, email, password);
+                // onAuthStateChanged handles the rest
+            } catch (error) {
+                showMessage(error.message, true);
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.textContent = "Sign In";
+            }
+        };
+    }
+</script>
+
+</body>
+</html>
+
