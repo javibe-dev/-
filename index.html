@@ -1290,8 +1290,8 @@
     }
 
     // --- YOUTUBE CONFIG ---
-    // Using the Firebase API Key as a fallback, but users should ideally use a dedicated YouTube Data API v3 key
-    const YT_API_KEY = "AIzaSyApKLZIjUZSQnKJCngvp0KZPYJf3zBNaCc"; 
+    // API KEY REMOVED: Using cookie-based search to bypass quotas
+    const YT_API_KEY = null; 
 
     window.onYouTubeIframeAPIReady = () => {
         player = new YT.Player('youtube-player', {
@@ -1326,22 +1326,24 @@
         resultsEl.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
                 <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); width: 30px; height: 30px; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
-                <p>Searching YouTube...</p>
+                <p>Searching via Scraper (No Quota)...</p>
             </div>
         `;
 
         try {
-            const response = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=20&key=${YT_API_KEY}`);
+            // Using a public Invidious instance for search to bypass YouTube API Quotas
+            // This does not require an API Key.
+            const response = await fetch(`https://inv.tux.rs/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
             const data = await response.json();
             
-            if (data.error) throw new Error(data.error.message);
+            if (!Array.isArray(data)) throw new Error("Invalid response from search provider.");
             
             resultsEl.innerHTML = '';
-            data.items.forEach(item => {
-                const videoId = item.id.videoId;
-                const title = item.snippet.title;
-                const thumb = item.snippet.thumbnails.high.url;
-                const channel = item.snippet.channelTitle;
+            data.forEach(item => {
+                const videoId = item.videoId;
+                const title = item.title;
+                const thumb = item.videoThumbnails ? item.videoThumbnails.find(t => t.quality === 'high').url : `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                const channel = item.author;
 
                 const card = document.createElement('div');
                 card.className = 'music-card';
@@ -1355,13 +1357,40 @@
                 `;
                 resultsEl.appendChild(card);
             });
+
+            if (data.length === 0) {
+                resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem;">No results found.</p>`;
+            }
         } catch (error) {
             console.error("Search Error:", error);
-            let msg = error.message;
-            if (msg.includes("API key not valid")) {
-                msg = "YouTube API Key is invalid. Please ensure the key in YT_API_KEY has 'YouTube Data API v3' enabled in Google Cloud Console.";
+            resultsEl.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 2rem;">
+                    <p style="color: #fda4af; margin-bottom: 10px;">Search Provider Error: ${error.message}</p>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);">Trying fallback method...</p>
+                </div>
+            `;
+            // Fallback to a secondary instance if the first one fails
+            try {
+                const fbResponse = await fetch(`https://invidious.sethforprivacy.com/api/v1/search?q=${encodeURIComponent(query)}&type=video`);
+                const fbData = await fbResponse.json();
+                // ... same rendering logic could be duplicated or abstracted
+                if (Array.isArray(fbData)) {
+                    resultsEl.innerHTML = '';
+                    fbData.forEach(item => {
+                        const videoId = item.videoId;
+                        const title = item.title;
+                        const thumb = `https://img.youtube.com/vi/${videoId}/hqdefault.jpg`;
+                        const channel = item.author;
+                        const card = document.createElement('div');
+                        card.className = 'music-card';
+                        card.onclick = () => playYouTubeVideo(videoId, title, channel, thumb);
+                        card.innerHTML = `<img src="${thumb}"> <div class="music-card-content"><h5>${title}</h5><p>${channel}</p></div>`;
+                        resultsEl.appendChild(card);
+                    });
+                }
+            } catch (e) {
+                resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">All search providers failed. Please check your internet or try again later.</p>`;
             }
-            resultsEl.innerHTML = `<p style="grid-column: 1/-1; text-align: center; padding: 2rem; color: #fda4af;">Error: ${msg}</p>`;
         } finally {
             btn.disabled = false;
             btn.textContent = "Search Music";
