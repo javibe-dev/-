@@ -842,6 +842,12 @@
         /* Video logic for mobile */
         #ytPlayerContainer.in-mobile-overlay {
             position: fixed !important;
+            top: 100px !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            width: 90% !important;
+            max-width: 340px !important;
+            aspect-ratio: 16/9 !important;
             z-index: 2100 !important;
             transition: all 0.4s cubic-bezier(0.32, 0.72, 0, 1) !important;
             opacity: 1 !important;
@@ -849,13 +855,14 @@
             border-radius: 12px;
             box-shadow: 0 20px 40px rgba(0,0,0,0.6);
             display: block !important;
+            height: auto !important;
         }
 
         #ytPlayerContainer.in-mobile-overlay.hidden-tab {
             opacity: 0 !important;
             visibility: hidden !important;
             pointer-events: none !important;
-            transform: translate(-50%, -45%) scale(0.95) !important;
+            transform: translate(-50%, 20px) scale(0.95) !important;
         }
 
         /* Ensure parent doesn't hide it on mobile */
@@ -1677,8 +1684,6 @@
                 const videoBtn = document.getElementById('mobileTabVideo');
                 if (videoBtn && videoBtn.classList.contains('active')) {
                     desktopContainer.classList.remove('hidden-tab');
-                    // Ensure position is synced after a short delay for overlay animation
-                    setTimeout(syncVideoPosition, 50);
                 } else {
                     desktopContainer.classList.add('hidden-tab');
                 }
@@ -1687,7 +1692,6 @@
             // Re-check marquee after overlay is visible
             setTimeout(() => {
                 window.checkMarquee();
-                syncVideoPosition();
             }, 500);
         } else {
             overlay.classList.remove('active');
@@ -1714,13 +1718,6 @@
         }
     };
 
-    // Keep video synced on resize/orientation change
-    window.addEventListener('resize', () => {
-        if (document.getElementById('mobilePlayerOverlay').classList.contains('active')) {
-            syncVideoPosition();
-        }
-    });
-
     window.switchMobileTab = (tab) => {
         const audioBtn = document.getElementById('mobileTabAudio');
         const videoBtn = document.getElementById('mobileTabVideo');
@@ -1739,24 +1736,9 @@
             if (desktopContainer) {
                 desktopContainer.classList.remove('hidden-tab');
                 desktopContainer.classList.add('in-mobile-overlay');
-                // Sync video position to media area
-                syncVideoPosition();
             }
         }
     };
-
-    function syncVideoPosition() {
-        const desktopContainer = document.getElementById('ytPlayerContainer');
-        const mediaArea = document.querySelector('.mobile-media-area');
-        if (desktopContainer && mediaArea && desktopContainer.classList.contains('in-mobile-overlay')) {
-            const rect = mediaArea.getBoundingClientRect();
-            desktopContainer.style.top = `${rect.top + rect.height / 2}px`;
-            desktopContainer.style.left = `${rect.left + rect.width / 2}px`;
-            desktopContainer.style.width = `${rect.width}px`;
-            desktopContainer.style.height = `${rect.width * (9/16)}px`;
-            desktopContainer.style.transform = 'translate(-50%, -50%)';
-        }
-    }
 
     window.checkMarquee = () => {
         const titleEl = document.getElementById('mobilePlayerTitle');
@@ -1781,12 +1763,27 @@
     };
 
     window.togglePlayback = () => {
-        if (!player || typeof player.getPlayerState !== 'function') return;
-
-        const state = player.getPlayerState();
         const mobileIcon = document.querySelector('#mobilePlayBtn i');
         const desktopIcon = document.querySelector('#desktopPlayBtn i');
 
+        if (!player || typeof player.getPlayerState !== 'function') {
+            // If player isn't ready, try to initialize it from the existing iframe
+            const iframe = document.getElementById('adfree-player');
+            if (iframe && iframe.src.includes('youtube.com')) {
+                player = new YT.Player('adfree-player', {
+                    events: {
+                        'onStateChange': onPlayerStateChange,
+                        'onReady': (e) => {
+                            e.target.playVideo();
+                            startProgressLoop();
+                        }
+                    }
+                });
+            }
+            return;
+        }
+
+        const state = player.getPlayerState();
         if (state === YT.PlayerState.PLAYING) {
             player.pauseVideo();
             if (mobileIcon) mobileIcon.className = 'fas fa-play';
@@ -2115,6 +2112,13 @@
         setTimeout(() => {
             window.checkMarquee();
         }, 100);
+
+        // Update iframe src directly as a fallback and to ensure the player loads
+        const iframe = document.getElementById('adfree-player');
+        const videoSrc = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&modestbranding=1&rel=0&vq=hd720`;
+        if (iframe && iframe.src !== videoSrc) {
+            iframe.src = videoSrc;
+        }
 
         // Initialize or Update YouTube Player API object
         if (!player || typeof player.loadVideoById !== 'function') {
