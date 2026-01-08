@@ -1379,31 +1379,26 @@
             </div>
         `;
 
-        // List of proxies to try in parallel for speed
+        // Improved proxy list with 'raw' allorigins and faster alternatives
         const proxies = [
-            (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
+            (url) => `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`, // Use /raw for direct HTML
             (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
-            (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
+            (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`,
+            (url) => `https://thingproxy.freeboard.io/fetch/${encodeURIComponent(url)}`
         ];
 
         const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`;
 
-        // Use Promise.any to get the fastest successful proxy response
         try {
             const results = await Promise.any(proxies.map(async (getProxyUrl) => {
                 const response = await fetch(getProxyUrl(ytUrl));
-                if (!response.ok) throw new Error("Proxy failed");
+                if (!response.ok) throw new Error(`Proxy ${getProxyUrl} failed`);
 
-                let html = "";
-                if (getProxyUrl.toString().includes("allorigins")) {
-                    const data = await response.json();
-                    html = data.contents;
-                } else {
-                    html = await response.text();
-                }
+                const html = await response.text();
+                if (!html || html.length < 500) throw new Error("Empty or invalid response");
 
                 const dataMatch = html.match(/var ytInitialData = ({.*?});/);
-                if (!dataMatch) throw new Error("No data match");
+                if (!dataMatch) throw new Error("No ytInitialData found");
 
                 const ytData = JSON.parse(dataMatch[1]);
                 const sectionList = ytData.contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents;
@@ -1422,22 +1417,16 @@
                         };
                     });
 
-                if (videoResults.length === 0) throw new Error("No videos");
+                if (videoResults.length === 0) throw new Error("No videos found");
                 return videoResults;
             }));
 
             window.displayResults(results);
-            if (btn) {
-                btn.disabled = false;
-                btn.textContent = "Search Music";
-            }
-            return;
-
         } catch (err) {
-            console.error("JaVibe: All proxies failed", err);
+            console.error("JaVibe: All search proxies failed", err);
             resultsEl.innerHTML = `
                 <div style="grid-column: 1/-1; text-align: center; padding: 2rem;">
-                    <p style="color: #fda4af; margin-bottom: 1rem;">Search timed out or failed. Please try again.</p>
+                    <p style="color: #fda4af; margin-bottom: 1rem;">Search failed. Nodes might be congested.</p>
                     <button onclick="window.searchMusic('${query.replace(/'/g, "\\'")}')" class="primary-btn" style="width: auto; padding: 8px 20px;">Retry Now</button>
                 </div>
             `;
@@ -1494,10 +1483,41 @@
             icon.classList.add('rotated');
         }
 
-        // Use Piped embed for ad-free playback on both Desktop and Mobile
-        // Piped is much better at blocking ads on mobile than standard YouTube embeds
-        console.log(`JaVibe: Playing ${videoId} via Piped ad-free embed`);
-        playerIframe.src = `https://piped.video/embed/${videoId}?autoplay=1`;
+        // Multi-instance Piped fallback for ad-free mobile playback
+        const pipedInstances = [
+            `https://piped.mha.fi/embed/${videoId}?autoplay=1`,
+            `https://piped.video/embed/${videoId}?autoplay=1`,
+            `https://piped.privacydev.net/embed/${videoId}?autoplay=1`,
+            `https://youtube.com/embed/${videoId}?autoplay=1&vq=hd720&modestbranding=1&rel=0`
+        ];
+
+        let currentInstance = 0;
+        
+        const tryNextInstance = () => {
+            if (currentInstance < pipedInstances.length) {
+                console.log(`JaVibe: Trying instance ${currentInstance}: ${pipedInstances[currentInstance]}`);
+                playerIframe.src = pipedInstances[currentInstance];
+                currentInstance++;
+            }
+        };
+
+        // If the iframe fails to load or Piped returns 500, we can't easily catch it via standard iframe events
+        // but we can provide a manual "Switch Mirror" button for the user if it's stuck.
+        const existingSwitch = document.getElementById('mirrorSwitchBtn');
+        if (existingSwitch) existingSwitch.remove();
+
+        const switchBtn = document.createElement('button');
+        switchBtn.id = 'mirrorSwitchBtn';
+        switchBtn.className = 'primary-btn';
+        switchBtn.style = 'position: absolute; bottom: 10px; right: 10px; width: auto; font-size: 11px; padding: 4px 8px; z-index: 10; opacity: 0.6;';
+        switchBtn.textContent = 'Switch Mirror (Ad-Free Fix)';
+        switchBtn.onclick = (e) => {
+            e.stopPropagation();
+            tryNextInstance();
+        };
+        
+        document.getElementById('playerSection').appendChild(switchBtn);
+        tryNextInstance();
     }
 
     // Mirror switching logic removed as requested for standard YouTube player reliability
