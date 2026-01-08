@@ -1153,6 +1153,25 @@
              .desktop-only-btn {
                  display: none !important;
              }
+
+             /* Hide song title and artist in search results on mobile */
+             .music-card-content {
+                 display: none !important;
+             }
+             .music-card {
+                 background: transparent !important;
+                 border: none !important;
+                 padding: 0 !important;
+             }
+             .music-card img {
+                 margin-bottom: 0 !important;
+                 border-radius: 12px !important;
+             }
+             .results-grid {
+                 grid-template-columns: repeat(3, 1fr) !important;
+                 gap: 8px !important;
+                 padding: 10px !important;
+             }
          }
     </style>
 </head>
@@ -1441,11 +1460,10 @@
 
     <!-- Mobile Full-screen Player Overlay -->
     <div id="mobilePlayerOverlay">
-        <div class="mobile-player-header">
-            <button class="mobile-secondary-btn" onclick="toggleMobilePlayer(false)">
-                <i class="fas fa-chevron-down"></i>
-            </button>
-            <div class="mobile-player-tabs">
+        <div class="mobile-player-header" onclick="toggleMobilePlayer(false)" style="cursor: pointer;">
+            <!-- Collapse button removed on mobile as requested -->
+            <div style="width: 44px;"></div> 
+            <div class="mobile-player-tabs" onclick="event.stopPropagation()">
                 <button id="mobileTabAudio" class="mobile-tab-btn active" onclick="switchMobileTab('audio')">
                     <i class="fas fa-headphones"></i> Audio
                 </button>
