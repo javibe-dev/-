@@ -839,23 +839,39 @@
             /* opacity: 0; transform handled above */
         }
 
-        /* Video logic for mobile */
-        #ytPlayerContainer.in-mobile-overlay {
+        /* Universal Video Container Logic */
+        #ytPlayerContainer {
             position: fixed !important;
-            top: 15% !important; /* Visual position in mobile overlay */
+            z-index: 2100 !important;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #000;
+            transition: all 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+            pointer-events: auto;
+            opacity: 0;
+            visibility: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            /* Default: Position over the desktop placeholder */
+            width: 0;
+            height: 0;
+        }
+
+        #ytPlayerContainer.active-desktop {
+            opacity: 1;
+            visibility: visible;
+            /* These will be overridden by JS to match placeholder */
+        }
+
+        #ytPlayerContainer.in-mobile-overlay {
+            top: 15% !important;
             left: 50% !important;
             transform: translateX(-50%) !important;
             width: 90% !important;
             max-width: 340px !important;
             aspect-ratio: 16/9 !important;
-            z-index: 2100 !important;
-            transition: opacity 0.4s ease, transform 0.4s ease !important;
             opacity: 1 !important;
             visibility: visible !important;
-            border-radius: 12px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            display: block !important;
-            background: #000;
+            height: auto !important;
         }
 
         #ytPlayerContainer.in-mobile-overlay.hidden-tab {
@@ -863,6 +879,18 @@
             visibility: hidden !important;
             pointer-events: none !important;
             transform: translate(-50%, 20px) scale(0.95) !important;
+        }
+
+        #adfree-player {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        @media (max-width: 768px) {
+            #playerSection {
+                display: none !important;
+            }
         }
 
         .video-fallback-ui {
@@ -1340,11 +1368,9 @@
 
             <!-- Music Player Bar (Global) -->
             <div id="musicPlayerBar" style="display: none; position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10, 10, 12, 0.98); backdrop-filter: blur(15px); border-top: 1px solid rgba(255, 255, 255, 0.1); z-index: 1000; flex-direction: column;">
-                <!-- Expanded Video Container -->
+                <!-- Expanded Video Container Placeholder -->
                 <div id="playerSection">
-                    <div id="ytPlayerContainer" style="width: 100%; aspect-ratio: 16/9; border-radius: 12px; overflow: hidden; background: #000; border: 1px solid var(--glass-border);">
-                        <iframe id="adfree-player" style="width: 100%; height: 100%; border: none;" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
-                    </div>
+                    <div id="desktopVideoPlaceholder" style="width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; border: 1px solid var(--glass-border);"></div>
                 </div>
 
                 <!-- Desktop Progress Bar -->
@@ -1402,7 +1428,11 @@
         </main>
     </div>
 
-    <!-- Mobile Full-screen Player -->
+    <div id="ytPlayerContainer">
+        <iframe id="adfree-player" allow="autoplay; encrypted-media; fullscreen" allowfullscreen></iframe>
+    </div>
+
+    <!-- Mobile Full-screen Player Overlay -->
     <div id="mobilePlayerOverlay">
         <div class="mobile-player-header">
             <button class="mobile-secondary-btn" onclick="toggleMobilePlayer(false)">
@@ -2150,6 +2180,35 @@
         };
     }
 
+    // Global function to sync video container with desktop placeholder
+    window.syncVideoWithDesktop = () => {
+        const container = document.getElementById('ytPlayerContainer');
+        const placeholder = document.getElementById('desktopVideoPlaceholder');
+        const overlay = document.getElementById('mobilePlayerOverlay');
+
+        // Only sync if mobile overlay is NOT active
+        if (overlay && !overlay.classList.contains('active')) {
+            if (container && placeholder) {
+                const rect = placeholder.getBoundingClientRect();
+                if (rect.width > 0 && rect.height > 0) {
+                    container.style.top = `${rect.top}px`;
+                    container.style.left = `${rect.left}px`;
+                    container.style.width = `${rect.width}px`;
+                    container.style.height = `${rect.height}px`;
+                    container.style.transform = 'none';
+                    container.classList.add('active-desktop');
+                    container.classList.remove('in-mobile-overlay');
+                } else {
+                    container.classList.remove('active-desktop');
+                }
+            }
+        }
+    };
+
+    // Run sync on scroll and resize
+    window.addEventListener('resize', window.syncVideoWithDesktop);
+    window.addEventListener('scroll', window.syncVideoWithDesktop, true);
+
     window.playYouTubeVideo = async function(videoId, title, artist, thumb) {
         const playerBar = document.getElementById('musicPlayerBar');
         playerBar.style.display = 'flex';
@@ -2180,6 +2239,8 @@
                 section.classList.add('expanded');
                 if (icon) icon.classList.add('rotated');
             }
+            // Ensure video syncs when expanded
+            setTimeout(window.syncVideoWithDesktop, 300);
         }
 
         setTimeout(() => {
@@ -2272,6 +2333,8 @@
         if (icon) {
             icon.classList.toggle('rotated');
         }
+        // Sync video position after expansion/collapse animation
+        setTimeout(window.syncVideoWithDesktop, 300);
     };
 
     const searchBtn = document.getElementById('musicSearchBtn');
@@ -2384,6 +2447,8 @@
             }
         }
     });
+    // Initialize sync
+    setTimeout(window.syncVideoWithDesktop, 1000);
 </script>
 
 </body>
