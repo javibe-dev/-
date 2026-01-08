@@ -804,10 +804,23 @@
                         </div>
                     </div>
                     
-                    <div style="display: flex; align-items: center; gap: 20px; flex: 1; justify-content: center;">
-                        <button onclick="togglePlayPause()" id="playPauseBtn" style="background: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s ease;">
-                            <i class="fas fa-pause" style="color: black; font-size: 1.1rem;"></i>
-                        </button>
+                    <div style="display: flex; flex-direction: column; align-items: center; gap: 8px; flex: 2; max-width: 600px;">
+                        <div style="display: flex; align-items: center; gap: 20px;">
+                            <button onclick="handleGenericAction('Previous')" style="background: none; border: none; color: white; cursor: pointer; opacity: 0.7;"><i class="fas fa-step-backward"></i></button>
+                            <button onclick="togglePlayPause()" id="playPauseBtn" style="background: white; border: none; width: 40px; height: 40px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s ease;">
+                                <i class="fas fa-pause" style="color: black; font-size: 1.1rem;"></i>
+                            </button>
+                            <button onclick="handleGenericAction('Next')" style="background: none; border: none; color: white; cursor: pointer; opacity: 0.7;"><i class="fas fa-step-forward"></i></button>
+                        </div>
+                        
+                        <!-- Progress Bar -->
+                        <div style="width: 100%; display: flex; align-items: center; gap: 10px;">
+                            <span id="currentTime" style="font-size: 0.7rem; color: var(--text-muted); min-width: 35px; text-align: right;">0:00</span>
+                            <div id="progressContainer" style="flex: 1; height: 4px; background: rgba(255,255,255,0.1); border-radius: 2px; cursor: pointer; position: relative;">
+                                <div id="progressBar" style="position: absolute; left: 0; top: 0; height: 100%; width: 0%; background: var(--primary); border-radius: 2px; transition: width 0.1s linear;"></div>
+                            </div>
+                            <span id="duration" style="font-size: 0.7rem; color: var(--text-muted); min-width: 35px;">0:00</span>
+                        </div>
                     </div>
 
                     <div style="flex: 1; display: flex; justify-content: flex-end; align-items: center; gap: 10px;">
@@ -1091,6 +1104,15 @@
     const youtubeSearchBtn = document.getElementById('youtubeSearchBtn');
     const youtubeResults = document.getElementById('youtubeResults');
 
+    // List of reliable Piped/Invidious instances for fallback
+    const SEARCH_INSTANCES = [
+        "https://pipedapi.kavin.rocks",
+        "https://api.piped.victr.me",
+        "https://pipedapi.leptons.xyz",
+        "https://piped-api.garudalinux.org",
+        "https://api-piped.mha.fi"
+    ];
+
     async function searchYouTube(query) {
         if (!query) return;
         
@@ -1099,86 +1121,92 @@
         youtubeResults.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
                 <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); width: 30px; height: 30px; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
-                <p>Fetching results...</p>
+                <p>Fetching results from YouTube...</p>
             </div>
         `;
 
-        // We use Piped API as an alternative to YouTube API to avoid quota issues
-        // This provides YouTube Music results without an API key
-        const PIPED_API_URL = "https://pipedapi.kavin.rocks/search?q=";
-        
-        try {
-            const response = await fetch(`${PIPED_API_URL}${encodeURIComponent(query)}&filter=music_songs`);
-            
-            if (!response.ok) {
-                throw new Error(`API error: ${response.status}`);
-            }
-            
-            const data = await response.json();
+        let lastError = null;
 
-            youtubeResults.innerHTML = '';
-            
-            // Piped returns an array of items or an object with items depending on instance
-            const items = Array.isArray(data) ? data : (data.items || []);
+        // Try multiple instances in case of 500 or quota issues
+        for (const instance of SEARCH_INSTANCES) {
+            try {
+                console.log(`JaVibe: Trying instance ${instance}`);
+                const response = await fetch(`${instance}/search?q=${encodeURIComponent(query)}&filter=music_songs`);
+                
+                if (!response.ok) {
+                    throw new Error(`Instance ${instance} returned ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const items = Array.isArray(data) ? data : (data.items || []);
 
-            if (items.length === 0) {
-                youtubeResults.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);"><p>No results found.</p></div>';
+                if (items.length === 0) continue; // Try next if no results
+
+                youtubeResults.innerHTML = '';
+                
+                items.forEach(item => {
+                    const videoId = item.url ? item.url.split('v=')[1] : null;
+                    if (!videoId) return;
+
+                    const title = item.title;
+                    const artist = item.uploaderName || 'Unknown Artist';
+                    const thumb = item.thumbnail;
+
+                    const card = document.createElement('div');
+                    card.style.cssText = `
+                        background: rgba(255, 255, 255, 0.03);
+                        border: 1px solid rgba(255, 255, 255, 0.05);
+                        border-radius: 12px;
+                        overflow: hidden;
+                        transition: all 0.2s ease;
+                        cursor: pointer;
+                    `;
+                    card.onmouseover = () => {
+                        card.style.transform = 'translateY(-5px)';
+                        card.style.background = 'rgba(255, 255, 255, 0.06)';
+                    };
+                    card.onmouseout = () => {
+                        card.style.transform = 'translateY(0)';
+                        card.style.background = 'rgba(255, 255, 255, 0.03)';
+                    };
+                    card.onclick = () => playSong(videoId, title, artist, thumb);
+
+                    card.innerHTML = `
+                        <div style="position: relative; aspect-ratio: 16/9; overflow: hidden;">
+                            <img src="${thumb}" style="width: 100%; height: 100%; object-fit: cover;">
+                            <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">YT Music</div>
+                        </div>
+                        <div style="padding: 12px;">
+                            <h5 style="margin: 0 0 4px; font-size: 0.9rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: white;">${title}</h5>
+                            <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">${artist}</p>
+                        </div>
+                    `;
+                    youtubeResults.appendChild(card);
+                });
+
+                // If we successfully populated results, break the loop
+                youtubeSearchBtn.disabled = false;
+                youtubeSearchBtn.textContent = "Search";
                 return;
+
+            } catch (error) {
+                console.warn(`JaVibe: Instance ${instance} failed:`, error);
+                lastError = error;
+                continue; // Try next instance
             }
-
-            items.forEach(item => {
-                // Piped API format differs from YouTube API v3
-                const videoId = item.url ? item.url.split('v=')[1] : null;
-                if (!videoId) return;
-
-                const title = item.title;
-                const artist = item.uploaderName || 'Unknown Artist';
-                const thumb = item.thumbnail;
-
-                const card = document.createElement('div');
-                card.style.cssText = `
-                    background: rgba(255, 255, 255, 0.03);
-                    border: 1px solid rgba(255, 255, 255, 0.05);
-                    border-radius: 12px;
-                    overflow: hidden;
-                    transition: all 0.2s ease;
-                    cursor: pointer;
-                `;
-                card.onmouseover = () => {
-                    card.style.transform = 'translateY(-5px)';
-                    card.style.background = 'rgba(255, 255, 255, 0.06)';
-                };
-                card.onmouseout = () => {
-                    card.style.transform = 'translateY(0)';
-                    card.style.background = 'rgba(255, 255, 255, 0.03)';
-                };
-                card.onclick = () => playSong(videoId, title, artist, thumb);
-
-                card.innerHTML = `
-                    <div style="position: relative; aspect-ratio: 16/9; overflow: hidden;">
-                        <img src="${thumb}" style="width: 100%; height: 100%; object-fit: cover;">
-                        <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">YT Music</div>
-                    </div>
-                    <div style="padding: 12px;">
-                        <h5 style="margin: 0 0 4px; font-size: 0.9rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: white;">${title}</h5>
-                        <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">${artist}</p>
-                    </div>
-                `;
-                youtubeResults.appendChild(card);
-            });
-        } catch (error) {
-            console.error("Search Error:", error);
-            youtubeResults.innerHTML = `
-                <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: #fda4af;">
-                    <i class="fas fa-exclamation-circle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
-                    <p>Failed to fetch results: ${error.message}</p>
-                    <p style="font-size: 0.8rem; margin-top: 0.5rem; opacity: 0.7;">Try searching for something else or check your connection.</p>
-                </div>
-            `;
-        } finally {
-            youtubeSearchBtn.disabled = false;
-            youtubeSearchBtn.textContent = "Search";
         }
+
+        // If we reach here, all instances failed
+        youtubeResults.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: #fda4af;">
+                <i class="fas fa-exclamation-circle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                <p>Failed to fetch results: ${lastError?.message || 'All instances down'}</p>
+                <p style="font-size: 0.8rem; margin-top: 0.5rem; opacity: 0.7;">This usually happens when YouTube blocks public proxies. Please try again in a moment.</p>
+                <button onclick="location.reload()" class="primary-btn" style="margin-top: 1rem; width: auto; padding: 8px 20px;">Retry Connection</button>
+            </div>
+        `;
+        youtubeSearchBtn.disabled = false;
+        youtubeSearchBtn.textContent = "Search";
     }
 
     // --- INTERNAL MUSIC PLAYER LOGIC ---
@@ -1216,11 +1244,58 @@
         if (event.data == YT.PlayerState.PLAYING) {
             isPlaying = true;
             btn.innerHTML = '<i class="fas fa-pause" style="color: black;"></i>';
+            startProgressLoop();
         } else {
             isPlaying = false;
             btn.innerHTML = '<i class="fas fa-play" style="color: black; margin-left: 3px;"></i>';
+            stopProgressLoop();
         }
     }
+
+    let progressInterval;
+    function startProgressLoop() {
+        if (progressInterval) clearInterval(progressInterval);
+        progressInterval = setInterval(() => {
+            if (player && player.getCurrentTime) {
+                const current = player.getCurrentTime();
+                const total = player.getDuration();
+                updateProgressBar(current, total);
+            }
+        }, 500);
+    }
+
+    function stopProgressLoop() {
+        clearInterval(progressInterval);
+    }
+
+    function updateProgressBar(current, total) {
+        const progressBar = document.getElementById('progressBar');
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationEl = document.getElementById('duration');
+        
+        if (total > 0) {
+            const pct = (current / total) * 100;
+            progressBar.style.width = `${pct}%`;
+            
+            currentTimeEl.textContent = formatTime(current);
+            durationEl.textContent = formatTime(total);
+        }
+    }
+
+    function formatTime(seconds) {
+        const mins = Math.floor(seconds / 60);
+        const secs = Math.floor(seconds % 60);
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
+
+    document.getElementById('progressContainer').onclick = (e) => {
+        if (!player || !player.getDuration) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const pct = x / rect.width;
+        const seekTime = player.getDuration() * pct;
+        player.seekTo(seekTime, true);
+    };
 
     window.playSong = function(videoId, title, artist, thumb) {
         if (!player) return;
