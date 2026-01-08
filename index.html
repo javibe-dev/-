@@ -1211,6 +1211,20 @@
         // Connect to the player!
         spotifyPlayer.connect();
     }
+
+    async function getSpotifyDevices() {
+        if (!spotifyAccessToken) return [];
+        try {
+            const response = await fetch('https://api.spotify.com/v1/me/player/devices', {
+                headers: { 'Authorization': `Bearer ${spotifyAccessToken}` }
+            });
+            const data = await response.json();
+            return data.devices || [];
+        } catch (err) {
+            console.error("Error fetching devices:", err);
+            return [];
+        }
+    }
     
     const spotifySearchInput = document.getElementById('spotifySearchInput');
     const spotifySearchBtn = document.getElementById('spotifySearchBtn');
@@ -1453,52 +1467,82 @@
         const playerBar = document.getElementById('musicPlayerBar');
         playerBar.style.display = 'flex';
         
-        // Update Metadata
         document.getElementById('playerTitle').textContent = title;
         document.getElementById('playerArtist').textContent = artist;
         document.getElementById('playerThumb').src = thumb;
         
-        // Stop any background audio if it's playing
         if (audioPlayer) {
             audioPlayer.pause();
             audioPlayer.src = '';
             stopProgressLoop();
         }
 
-        // Try to play full track via Web SDK (JaVibe Player) if we have a device_id
-        if (spotifyAccessToken && spotifyDeviceId) {
-            try {
-                const playResponse = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${spotifyDeviceId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': `Bearer ${spotifyAccessToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        uris: [`spotify:track:${trackId}`]
-                    })
-                });
+        const playOnDevice = async (deviceId) => {
+            return fetch(`https://api.spotify.com/v1/me/player/play${deviceId ? `?device_id=${deviceId}` : ''}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `Bearer ${spotifyAccessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ uris: [`spotify:track:${trackId}`] })
+            });
+        };
 
-                if (playResponse.ok) {
-                    console.log("Full track playback started via JaVibe Player.");
-                    // Still show the embed for visual feedback/controls
-                    const playerContainer = document.getElementById('youtube-player-container');
-                    playerContainer.innerHTML = `<iframe src="https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0" width="100%" height="80" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="border-radius:12px;"></iframe>`;
-                    isPlaying = true;
-                    updatePlayPauseUI(true);
-                    return; // Success!
-                }
-            } catch (err) {
-                console.error("Web SDK Playback failed:", err);
+        // 1. Try JaVibe Player (SDK - Desktop only)
+        if (spotifyAccessToken && spotifyDeviceId) {
+            const res = await playOnDevice(spotifyDeviceId);
+            if (res.ok) {
+                console.log("Playing on JaVibe Player");
+                return finalizePlayback(trackId);
             }
         }
 
-        // FALLBACK: Load Spotify Embed (Limited to 30s on mobile if not logged into browser)
+        // 2. SMART HIJACK: Try any other active device (Crucial for Mobile)
+        if (spotifyAccessToken) {
+            const devices = await getSpotifyDevices();
+            const activeDevice = devices.find(d => d.is_active) || devices[0];
+            
+            if (activeDevice) {
+                const res = await playOnDevice(activeDevice.id);
+                if (res.ok) {
+                    console.log(`Playing on ${activeDevice.name}`);
+                    return finalizePlayback(trackId);
+                }
+            }
+        }
+
+        // 3. LAST RESORT: Embed (30s preview on mobile if no active device)
         const playerContainer = document.getElementById('youtube-player-container');
         playerContainer.innerHTML = `<iframe src="https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0" width="100%" height="80" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="border-radius:12px;"></iframe>`;
         
+        // Show a "Wake Up" hint for mobile users if they got the embed
+        if (window.innerWidth < 768) {
+            showMobileSpotifyHint();
+        }
+
         isPlaying = true;
         updatePlayPauseUI(true);
+    }
+
+    function finalizePlayback(trackId) {
+        const playerContainer = document.getElementById('youtube-player-container');
+        playerContainer.innerHTML = `<iframe src="https://open.spotify.com/embed/track/${trackId}?utm_source=generator&theme=0" width="100%" height="80" frameBorder="0" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" style="border-radius:12px;"></iframe>`;
+        isPlaying = true;
+        updatePlayPauseUI(true);
+    }
+
+    function showMobileSpotifyHint() {
+        const hint = document.createElement('div');
+        hint.id = 'spotifyMobileHint';
+        hint.style = "position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%); background: #1DB954; color: white; padding: 12px 20px; border-radius: 30px; font-size: 0.9rem; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.3); display: flex; align-items: center; gap: 10px; width: 90%; max-width: 400px;";
+        hint.innerHTML = `
+            <i class="fab fa-spotify"></i>
+            <span>To get full tracks, make sure Spotify is open!</span>
+            <button onclick="window.location.href='spotify:track:'; this.parentElement.remove();" style="background: white; color: #1DB954; border: none; padding: 5px 12px; border-radius: 15px; font-weight: 600; cursor: pointer;">Wake Up</button>
+            <i class="fas fa-times" onclick="this.parentElement.remove()" style="margin-left: auto; cursor: pointer;"></i>
+        `;
+        document.body.appendChild(hint);
+        setTimeout(() => hint.remove(), 8000);
     }
 
     function updatePlayPauseUI(playing) {
