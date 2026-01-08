@@ -1028,6 +1028,7 @@
 
                         <!-- Controls & Volume -->
                         <div style="display: flex; align-items: center; gap: 20px;">
+                            <button onclick="switchPlayerMirror()" class="primary-btn" style="padding: 5px 12px; font-size: 0.75rem; width: auto; background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.1);"><i class="fas fa-sync-alt"></i> Switch Mirror</button>
                             <div style="display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.05); padding: 5px 12px; border-radius: 20px;">
                                 <i class="fas fa-volume-up" style="font-size: 0.8rem; color: var(--text-muted);"></i>
                                 <input type="range" id="volumeSlider" min="0" max="100" value="100" style="width: 80px; height: 4px; accent-color: var(--primary);">
@@ -1370,17 +1371,17 @@
     // Helper to fetch through multiple CORS proxies
     async function fetchWithProxy(url, type = 'text', method = 'GET', body = null) {
         const proxies = [
-            `https://corsproxy.io/?${encodeURIComponent(url)}`,
+            `https://corsproxy.org/?${encodeURIComponent(url)}`,
             `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
-            `https://api.codetabs.com/v1/proxy?quest=${url}`,
-            `https://thingproxy.freeboard.io/fetch/${url}`
+            `https://cors-proxy.org/?url=${encodeURIComponent(url)}`,
+            `https://corsproxy.io/?${encodeURIComponent(url)}`
         ];
 
         for (const proxy of proxies) {
             try {
                 console.log(`JaVibe: Trying proxy ${proxy}`);
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout per proxy
+                const timeoutId = setTimeout(() => controller.abort(), 8000); 
 
                 const options = { 
                     method, 
@@ -1399,12 +1400,13 @@
                 
                 if (proxy.includes('allorigins.win')) {
                     const data = await response.json();
-                    return data.contents;
+                    const content = data.contents;
+                    return type === 'json' ? JSON.parse(content) : content;
                 }
                 
                 return type === 'json' ? await response.json() : await response.text();
             } catch (err) {
-                console.warn(`JaVibe: Proxy ${proxy} failed or timed out`, err);
+                console.warn(`JaVibe: Proxy ${proxy} failed`, err);
             }
         }
         throw new Error("All proxies failed.");
@@ -1416,154 +1418,114 @@
         
         // FORCE CLEAR EVERYTHING
         const resultsEl = document.getElementById('musicResults');
-        resultsEl.innerHTML = ''; // Wipe previous results immediately
+        resultsEl.innerHTML = ''; 
         
         lastSearchQuery = query;
         window.lastSearchQuery = query;
         const btn = document.getElementById('musicSearchBtn');
         const input = document.getElementById('musicSearchInput');
         
-        // Clear input to allow re-searching
         if (input) input.value = '';
         
         btn.disabled = true;
         btn.textContent = "Searching...";
         
-        // Show loading state after clearing
         resultsEl.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
                 <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); width: 30px; height: 30px; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
-                <p>Searching for "${query}"...</p>
+                <p>Searching for "${query}" across ad-free nodes...</p>
             </div>
         `;
 
-        try {
-            // 1. Direct Link/ID Check (Immediate)
-            const ytIdMatch = query.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/);
-            const directId = (ytIdMatch ? ytIdMatch[1] : (query.length === 11 && !query.includes(' ') ? query : null));
-            
-            if (directId) {
-                playYouTubeVideo(directId, "Direct Link", "YouTube", `https://img.youtube.com/vi/${directId}/hqdefault.jpg`);
-                return;
-            }
+        // NEW STRATEGY: Use Piped/Invidious APIs DIRECTLY as primary. 
+        // These are CORS-enabled and much more reliable for searching.
+        const apiInstances = [
+            { url: 'https://pipedapi.kavin.rocks', type: 'piped' },
+            { url: 'https://pipedapi.moomoo.me', type: 'piped' },
+            { url: 'https://api.piped.victr.me', type: 'piped' },
+            { url: 'https://inv.zzls.xyz', type: 'invidious' },
+            { url: 'https://invidious.projectsegfau.lt', type: 'invidious' },
+            { url: 'https://yewtu.be', type: 'invidious' }
+        ];
 
-            // 2. Primary: YouTube Internal API (youtubei/v1/search) - What yt-dlp uses
+        for (const instance of apiInstances) {
             try {
-                const searchUrl = 'https://www.youtube.com/youtubei/v1/search';
-                const payload = {
-                    context: {
-                        client: {
-                            clientName: "WEB",
-                            clientVersion: "2.20240313.05.00",
-                            hl: "en",
-                            gl: "US",
-                            utcOffsetMinutes: 0
-                        }
-                    },
-                    query: query
-                };
-
-                const data = await fetchWithProxy(searchUrl, 'json', 'POST', payload);
-                const contents = data?.contents?.twoColumnSearchResultsRenderer?.primaryContents?.sectionListRenderer?.contents[0]?.itemSectionRenderer?.contents;
+                console.log(`JaVibe: Trying ${instance.type} search on ${instance.url}`);
+                const searchUrl = instance.type === 'piped' 
+                    ? `${instance.url}/search?q=${encodeURIComponent(query)}&filter=videos`
+                    : `${instance.url}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
                 
-                if (contents && contents.length > 0) {
-                    const results = contents
-                        .filter(item => item.videoRenderer)
-                        .map(item => {
-                            const v = item.videoRenderer;
-                            return {
-                                videoId: v.videoId,
-                                title: v.title.runs[0].text,
-                                author: v.longBylineText?.runs[0]?.text || v.shortBylineText?.runs[0]?.text || "Unknown",
-                                thumb: v.thumbnail.thumbnails[0].url.split('?')[0]
-                            };
-                        });
+                const res = await fetch(searchUrl);
+                if (!res.ok) continue;
+                
+                const data = await res.json();
+                const items = instance.type === 'piped' ? data.items : data;
+                
+                if (items && items.length > 0) {
+                    const results = items.slice(0, 20).map(item => ({
+                        videoId: item.videoId || (item.url ? item.url.split('v=')[1] : null),
+                        title: item.title,
+                        author: item.uploaderName || item.author,
+                        thumb: item.thumbnail || (item.videoThumbnails ? item.videoThumbnails[0].url : null)
+                    })).filter(r => r.videoId);
 
                     if (results.length > 0) {
                         displayResults(results);
+                        btn.disabled = false;
+                        btn.textContent = "Search Music";
                         return;
                     }
                 }
-            } catch (e) {
-                console.warn("JaVibe: Internal API search failed, trying scraper fallback...", e);
+            } catch (err) {
+                console.warn(`JaVibe: Instance ${instance.url} failed`, err);
+                continue;
             }
+        }
 
-            // 3. Secondary: Scrape Fallback
-            try {
-                const scrapeUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`;
-                const html = await fetchWithProxy(scrapeUrl);
-                const regex = /"videoRenderer":\{"videoId":"([^"]+)","thumbnail":\{"thumbnails":\[\{"url":"([^"]+)"[^}]+\]\},"title":\{"runs":\[\{"text":"([^"]+)"\}\][^}]+\},"longBylineText":\{"runs":\[\{"text":"([^"]+)"/g;
-                let match;
-                const results = [];
-                while ((match = regex.exec(html)) !== null && results.length < 15) {
-                    results.push({
-                        videoId: match[1],
-                        thumb: match[2].split('?')[0],
-                        title: match[3].replace(/\\u0026/g, '&').replace(/\\"/g, '"'),
-                        author: match[4].replace(/\\u0026/g, '&')
-                    });
-                }
+        // FALLBACK: If all ad-free nodes fail, try scraping YouTube directly via proxy
+        try {
+            console.log(`JaVibe: All API nodes failed. Trying direct scrape fallback for "${query}"`);
+            const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`; // filter for videos only
+            const html = await fetchWithProxy(ytUrl, 'text');
+            
+            // Extract video data using regex from the ytInitialData JSON in the HTML
+            const dataMatch = html.match(/var ytInitialData = (\{.*?\});/);
+            if (dataMatch) {
+                const data = JSON.parse(dataMatch[1]);
+                const contents = data.contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents[0].itemSectionRenderer.contents;
+                
+                const results = contents
+                    .filter(c => c.videoRenderer)
+                    .map(c => {
+                        const v = c.videoRenderer;
+                        return {
+                            videoId: v.videoId,
+                            title: v.title.runs[0].text,
+                            author: v.ownerText.runs[0].text,
+                            thumb: v.thumbnail.thumbnails[0].url
+                        };
+                    })
+                    .slice(0, 20);
+
                 if (results.length > 0) {
                     displayResults(results);
+                    btn.disabled = false;
+                    btn.textContent = "Search Music";
                     return;
                 }
-            } catch (e) {
-                console.warn("JaVibe: Scraper fallback failed", e);
             }
-
-            // 4. Tertiary: Piped/Invidious Fallback (Ultra-stable instances)
-            const fallbacks = [
-                'https://pipedapi.kavin.rocks',
-                'https://iv.ggtyler.dev',
-                'https://yewtu.be',
-                'https://invidious.lunar.icu'
-            ];
-
-            for (const base of fallbacks) {
-                try {
-                    const url = base.includes('piped') 
-                        ? `${base}/search?q=${encodeURIComponent(query)}&filter=videos`
-                        : `${base}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
-                    
-                    const res = await fetch(url);
-                    if (!res.ok) continue;
-                    const data = await res.json();
-                    const items = data.items || data;
-                    
-                    if (items && items.length > 0) {
-                        const results = items.slice(0, 15).map(item => ({
-                            videoId: item.videoId || (item.url ? item.url.split('v=')[1] : null),
-                            title: item.title,
-                            author: item.uploaderName || item.author,
-                            thumb: item.thumbnail || (item.videoThumbnails ? item.videoThumbnails[0].url : null)
-                        })).filter(r => r.videoId);
-
-                        if (results.length > 0) {
-                            displayResults(results);
-                            return;
-                        }
-                    }
-                } catch (err) { continue; }
-            }
-
-            resultsEl.innerHTML = `
-                <div style="grid-column: 1/-1; text-align: center; padding: 2rem;">
-                    <p style="color: #fda4af; margin-bottom: 1rem;">No results found. Try a different search term or paste a YouTube link.</p>
-                    <button onclick="searchMusic(lastSearchQuery)" class="primary-btn" style="width: auto; padding: 8px 20px;">Retry Search</button>
-                </div>
-            `;
-        } catch (err) {
-            console.error("JaVibe: All search methods failed", err);
-            resultsEl.innerHTML = `
-                <div style="grid-column: 1/-1; text-align: center; padding: 2rem;">
-                    <p style="color: #fda4af; margin-bottom: 1rem;">All search providers failed or timed out. Please check your internet.</p>
-                    <button onclick="searchMusic(lastSearchQuery)" class="primary-btn" style="width: auto; padding: 8px 20px;">Retry Search</button>
-                </div>
-            `;
-        } finally {
-            btn.disabled = false;
-            btn.textContent = "Search Music";
+        } catch (e) {
+            console.error("JaVibe: Direct scrape fallback failed", e);
         }
+
+        resultsEl.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 2rem;">
+                <p style="color: #fda4af; margin-bottom: 1rem;">All search nodes are currently congested. Please try again in a few seconds.</p>
+                <button onclick="searchMusic(lastSearchQuery)" class="primary-btn" style="width: auto; padding: 8px 20px;">Retry Search</button>
+            </div>
+        `;
+        btn.disabled = false;
+        btn.textContent = "Search Music";
     }
 
     function displayResults(results) {
@@ -1594,34 +1556,65 @@
         });
     }
 
+    let currentVideoId = "";
+    let currentInstanceIndex = 0;
+    let videoInstances = [];
+
     async function playYouTubeVideo(videoId, title, artist, thumb) {
-        document.getElementById('musicPlayerBar').style.display = 'flex';
+        currentVideoId = videoId;
+        currentInstanceIndex = 0;
+        
+        const playerBar = document.getElementById('musicPlayerBar');
+        playerBar.style.display = 'flex';
         document.getElementById('playerTitle').textContent = title;
         document.getElementById('playerArtist').textContent = artist;
         document.getElementById('playerThumb').src = thumb;
         
-        // List of reliable ad-free YouTube frontend instances
-        const instances = [
-            `https://invidious.no-logs.com/embed/${videoId}`,
+        // Verified active ad-free instances (Invidious & Piped)
+        videoInstances = [
+            `https://inv.zzls.xyz/embed/${videoId}`,
+            `https://invidious.projectsegfau.lt/embed/${videoId}`,
             `https://yewtu.be/embed/${videoId}`,
-            `https://invidious.lunar.icu/embed/${videoId}`,
-            `https://pipedapi.kavin.rocks/embed/${videoId}`
+            `https://pipedapi.kavin.rocks/embed/${videoId}`,
+            `https://invidious.no-logs.com/embed/${videoId}`
         ];
 
         const playerIframe = document.getElementById('adfree-player');
         
-        // Try to load the first instance, if it fails (not easy to detect via iframe src),
-        // we'll at least use a more reliable one as primary.
-        playerIframe.src = instances[0];
-
-        // Auto-expand player when starting new video
+        // Auto-expand player
         const section = document.getElementById('playerSection');
         const icon = document.getElementById('togglePlayerIcon');
         if (!section.classList.contains('expanded')) {
             section.classList.add('expanded');
             icon.classList.add('rotated');
         }
+
+        // Try first instance
+        console.log(`JaVibe: Trying player instance ${videoInstances[currentInstanceIndex]}`);
+        playerIframe.src = videoInstances[currentInstanceIndex];
     }
+
+    window.switchPlayerMirror = () => {
+        if (!currentVideoId) return;
+        
+        currentInstanceIndex = (currentInstanceIndex + 1) % videoInstances.length;
+        const playerIframe = document.getElementById('adfree-player');
+        
+        console.log(`JaVibe: Switching to mirror #${currentInstanceIndex + 1}: ${videoInstances[currentInstanceIndex]}`);
+        
+        // Temporary feedback on the button
+        const btn = event.currentTarget;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = `<i class="fas fa-sync-alt fa-spin"></i> Switching...`;
+        btn.disabled = true;
+        
+        playerIframe.src = videoInstances[currentInstanceIndex];
+        
+        setTimeout(() => {
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        }, 1000);
+    };
 
     window.togglePlayPause = () => {
         // Iframe controls its own playback. This is just a placeholder.
