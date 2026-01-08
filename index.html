@@ -1530,34 +1530,13 @@
             icon.classList.add('rotated');
         }
 
-        const healthyNodes = JaVibeRegistry.getHealthy('pipedNodes');
-        let nodeIndex = 0;
+        // Direct YouTube embed - most reliable
+        console.log(`JaVibe: Playing ${videoId} via Direct YouTube Embed`);
+        playerIframe.src = `https://youtube.com/embed/${videoId}?autoplay=1&vq=hd720&modestbranding=1&rel=0`;
 
-        const tryNextNode = () => {
-            if (nodeIndex < healthyNodes.length) {
-                const node = healthyNodes[nodeIndex];
-                JaVibeRegistry.log(`Attempting playback via ${node.id}...`);
-                playerIframe.src = node.url(videoId);
-                nodeIndex++;
-            }
-        };
-
+        // Clean up any existing switch buttons
         const existingSwitch = document.getElementById('mirrorSwitchBtn');
         if (existingSwitch) existingSwitch.remove();
-
-        const switchBtn = document.createElement('button');
-        switchBtn.id = 'mirrorSwitchBtn';
-        switchBtn.className = 'primary-btn';
-        switchBtn.style = 'position: absolute; bottom: 10px; right: 10px; width: auto; font-size: 11px; padding: 4px 8px; z-index: 10; opacity: 0.6;';
-        switchBtn.textContent = 'Auto-Repair Playback';
-        switchBtn.onclick = (e) => {
-            e.stopPropagation();
-            JaVibeRegistry.reportFailure('pipedNodes', healthyNodes[nodeIndex-1]?.id);
-            tryNextNode();
-        };
-        
-        document.getElementById('playerSection').appendChild(switchBtn);
-        tryNextNode();
     }
 
     // Mirror switching logic removed as requested for standard YouTube player reliability
