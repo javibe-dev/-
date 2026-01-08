@@ -1379,20 +1379,20 @@
             </div>
         `;
 
-        // List of proxies to try
+        // List of proxies to try in parallel for speed
         const proxies = [
             (url) => `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`,
             (url) => `https://corsproxy.io/?${encodeURIComponent(url)}`,
             (url) => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(url)}`
         ];
 
-        const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`; // Filtered for videos only
+        const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`;
 
-        for (const getProxyUrl of proxies) {
-            try {
-                console.log("JaVibe: Trying proxy...");
+        // Use Promise.any to get the fastest successful proxy response
+        try {
+            const results = await Promise.any(proxies.map(async (getProxyUrl) => {
                 const response = await fetch(getProxyUrl(ytUrl));
-                if (!response.ok) continue;
+                if (!response.ok) throw new Error("Proxy failed");
 
                 let html = "";
                 if (getProxyUrl.toString().includes("allorigins")) {
@@ -1402,16 +1402,13 @@
                     html = await response.text();
                 }
 
-                // Extract ytInitialData
                 const dataMatch = html.match(/var ytInitialData = ({.*?});/);
-                if (!dataMatch) continue;
+                if (!dataMatch) throw new Error("No data match");
 
                 const ytData = JSON.parse(dataMatch[1]);
                 const sectionList = ytData.contents.twoColumnSearchResultsRenderer.primaryContents.sectionListRenderer.contents;
-                
-                // Find the itemSectionRenderer that contains video results
                 const itemSection = sectionList.find(c => c.itemSectionRenderer)?.itemSectionRenderer;
-                if (!itemSection) continue;
+                if (!itemSection) throw new Error("No item section");
 
                 const videoResults = itemSection.contents
                     .filter(c => c.videoRenderer)
@@ -1425,29 +1422,30 @@
                         };
                     });
 
-                if (videoResults.length > 0) {
-                    window.displayResults(videoResults);
-                    if (btn) {
-                        btn.disabled = false;
-                        btn.textContent = "Search Music";
-                    }
-                    return; // Success!
-                }
-            } catch (err) {
-                console.warn("JaVibe: Proxy attempt failed", err);
-            }
-        }
+                if (videoResults.length === 0) throw new Error("No videos");
+                return videoResults;
+            }));
 
-        // If we reach here, all proxies failed
-        resultsEl.innerHTML = `
-            <div style="grid-column: 1/-1; text-align: center; padding: 2rem;">
-                <p style="color: #fda4af; margin-bottom: 1rem;">All search nodes are currently congested. Please try again in a few seconds.</p>
-                <button onclick="window.searchMusic('${query.replace(/'/g, "\\'")}')" class="primary-btn" style="width: auto; padding: 8px 20px;">Retry Now</button>
-            </div>
-        `;
-        if (btn) {
-            btn.disabled = false;
-            btn.textContent = "Search Music";
+            window.displayResults(results);
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = "Search Music";
+            }
+            return;
+
+        } catch (err) {
+            console.error("JaVibe: All proxies failed", err);
+            resultsEl.innerHTML = `
+                <div style="grid-column: 1/-1; text-align: center; padding: 2rem;">
+                    <p style="color: #fda4af; margin-bottom: 1rem;">Search timed out or failed. Please try again.</p>
+                    <button onclick="window.searchMusic('${query.replace(/'/g, "\\'")}')" class="primary-btn" style="width: auto; padding: 8px 20px;">Retry Now</button>
+                </div>
+            `;
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = "Search Music";
+            }
         }
     }
 
@@ -1496,9 +1494,10 @@
             icon.classList.add('rotated');
         }
 
-        // Use standard YouTube embed for maximum reliability
-        console.log(`JaVibe: Playing ${videoId} via YouTube official embed`);
-        playerIframe.src = `https://www.youtube.com/embed/${videoId}?autoplay=1`;
+        // Use Piped embed for ad-free playback on both Desktop and Mobile
+        // Piped is much better at blocking ads on mobile than standard YouTube embeds
+        console.log(`JaVibe: Playing ${videoId} via Piped ad-free embed`);
+        playerIframe.src = `https://piped.video/embed/${videoId}?autoplay=1`;
     }
 
     // Mirror switching logic removed as requested for standard YouTube player reliability
