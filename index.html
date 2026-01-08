@@ -1114,8 +1114,12 @@
         "https://pipedapi.rivo.cc"
     ];
 
-    // CORS Proxy to bypass browser restrictions
-    const CORS_PROXY = "https://api.allorigins.win/raw?url=";
+    // CORS Proxies to bypass browser restrictions
+    const PROXIES = [
+        "https://api.allorigins.win/raw?url=",
+        "https://corsproxy.io/?",
+        "https://thingproxy.freeboard.io/fetch/"
+    ];
 
     async function searchYouTube(query) {
         if (!query) return;
@@ -1131,77 +1135,82 @@
 
         let lastError = null;
 
-        // Try multiple instances in case of 500 or quota issues
+        // Try instances
         for (const instance of SEARCH_INSTANCES) {
-            try {
-                console.log(`JaVibe: Trying instance ${instance} via proxy`);
-                
-                // Construct the target URL
-                const targetUrl = `${instance}/search?q=${encodeURIComponent(query)}&filter=music_songs`;
-                
-                // Use AllOrigins proxy to bypass CORS
-                const response = await fetch(`${CORS_PROXY}${encodeURIComponent(targetUrl)}`);
-                
-                if (!response.ok) {
-                    throw new Error(`Instance ${instance} returned ${response.status}`);
+            // Try each instance with different proxies
+            for (const proxy of PROXIES) {
+                try {
+                    console.log(`JaVibe: Trying ${instance} via ${proxy}`);
+                    
+                    const targetUrl = `${instance}/search?q=${encodeURIComponent(query)}&filter=music_songs`;
+                    const response = await fetch(`${proxy}${encodeURIComponent(targetUrl)}`);
+                    
+                    if (!response.ok) throw new Error(`Status ${response.status}`);
+                    
+                    const text = await response.text();
+                    if (!text || text.trim().length === 0) throw new Error("Empty response");
+                    
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        throw new Error("Invalid JSON");
+                    }
+                    
+                    const items = Array.isArray(data) ? data : (data.items || []);
+                    if (items.length === 0) continue;
+
+                    youtubeResults.innerHTML = '';
+                    
+                    items.forEach(item => {
+                        const videoId = item.url ? item.url.split('v=')[1] : null;
+                        if (!videoId) return;
+
+                        const title = item.title;
+                        const artist = item.uploaderName || 'Unknown Artist';
+                        const thumb = item.thumbnail;
+
+                        const card = document.createElement('div');
+                        card.style.cssText = `
+                            background: rgba(255, 255, 255, 0.03);
+                            border: 1px solid rgba(255, 255, 255, 0.05);
+                            border-radius: 12px;
+                            overflow: hidden;
+                            transition: all 0.2s ease;
+                            cursor: pointer;
+                        `;
+                        card.onmouseover = () => {
+                            card.style.transform = 'translateY(-5px)';
+                            card.style.background = 'rgba(255, 255, 255, 0.06)';
+                        };
+                        card.onmouseout = () => {
+                            card.style.transform = 'translateY(0)';
+                            card.style.background = 'rgba(255, 255, 255, 0.03)';
+                        };
+                        card.onclick = () => playSong(videoId, title, artist, thumb);
+
+                        card.innerHTML = `
+                            <div style="position: relative; aspect-ratio: 16/9; overflow: hidden;">
+                                <img src="${thumb}" style="width: 100%; height: 100%; object-fit: cover;">
+                                <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">YT Music</div>
+                            </div>
+                            <div style="padding: 12px;">
+                                <h5 style="margin: 0 0 4px; font-size: 0.9rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: white;">${title}</h5>
+                                <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">${artist}</p>
+                            </div>
+                        `;
+                        youtubeResults.appendChild(card);
+                    });
+
+                    youtubeSearchBtn.disabled = false;
+                    youtubeSearchBtn.textContent = "Search";
+                    return;
+
+                } catch (error) {
+                    console.warn(`JaVibe: ${instance} failed with proxy:`, error.message);
+                    lastError = error;
+                    continue; 
                 }
-                
-                const data = await response.json();
-                const items = Array.isArray(data) ? data : (data.items || []);
-
-                if (items.length === 0) continue; // Try next if no results
-
-                youtubeResults.innerHTML = '';
-                
-                items.forEach(item => {
-                    const videoId = item.url ? item.url.split('v=')[1] : null;
-                    if (!videoId) return;
-
-                    const title = item.title;
-                    const artist = item.uploaderName || 'Unknown Artist';
-                    const thumb = item.thumbnail;
-
-                    const card = document.createElement('div');
-                    card.style.cssText = `
-                        background: rgba(255, 255, 255, 0.03);
-                        border: 1px solid rgba(255, 255, 255, 0.05);
-                        border-radius: 12px;
-                        overflow: hidden;
-                        transition: all 0.2s ease;
-                        cursor: pointer;
-                    `;
-                    card.onmouseover = () => {
-                        card.style.transform = 'translateY(-5px)';
-                        card.style.background = 'rgba(255, 255, 255, 0.06)';
-                    };
-                    card.onmouseout = () => {
-                        card.style.transform = 'translateY(0)';
-                        card.style.background = 'rgba(255, 255, 255, 0.03)';
-                    };
-                    card.onclick = () => playSong(videoId, title, artist, thumb);
-
-                    card.innerHTML = `
-                        <div style="position: relative; aspect-ratio: 16/9; overflow: hidden;">
-                            <img src="${thumb}" style="width: 100%; height: 100%; object-fit: cover;">
-                            <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">YT Music</div>
-                        </div>
-                        <div style="padding: 12px;">
-                            <h5 style="margin: 0 0 4px; font-size: 0.9rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: white;">${title}</h5>
-                            <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">${artist}</p>
-                        </div>
-                    `;
-                    youtubeResults.appendChild(card);
-                });
-
-                // If we successfully populated results, break the loop
-                youtubeSearchBtn.disabled = false;
-                youtubeSearchBtn.textContent = "Search";
-                return;
-
-            } catch (error) {
-                console.warn(`JaVibe: Instance ${instance} failed:`, error);
-                lastError = error;
-                continue; // Try next instance
             }
         }
 
