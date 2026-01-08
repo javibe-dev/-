@@ -1086,8 +1086,7 @@
         }
     };
 
-    // --- YOUTUBE API INTEGRATION ---
-    const YOUTUBE_API_KEY = "AIzaSyApKLZIjUZSQnKJCngvp0KZPYJf3zBNaCc"; 
+    // --- SEARCH INTEGRATION ---
     const youtubeSearchInput = document.getElementById('youtubeSearchInput');
     const youtubeSearchBtn = document.getElementById('youtubeSearchBtn');
     const youtubeResults = document.getElementById('youtubeResults');
@@ -1100,27 +1099,42 @@
         youtubeResults.innerHTML = `
             <div style="grid-column: 1/-1; text-align: center; padding: 3rem;">
                 <div style="border: 3px solid rgba(255,255,255,0.1); border-top: 3px solid var(--primary); width: 30px; height: 30px; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 1rem;"></div>
-                <p>Fetching from YouTube...</p>
+                <p>Fetching results...</p>
             </div>
         `;
 
+        // We use Piped API as an alternative to YouTube API to avoid quota issues
+        // This provides YouTube Music results without an API key
+        const PIPED_API_URL = "https://pipedapi.kavin.rocks/search?q=";
+        
         try {
-            const response = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=12&q=${encodeURIComponent(query)}&type=video&key=${YOUTUBE_API_KEY}`);
-            const data = await response.json();
-
-            if (data.error) {
-                throw new Error(data.error.message);
+            const response = await fetch(`${PIPED_API_URL}${encodeURIComponent(query)}&filter=music_songs`);
+            
+            if (!response.ok) {
+                throw new Error(`API error: ${response.status}`);
             }
+            
+            const data = await response.json();
 
             youtubeResults.innerHTML = '';
             
-            if (!data.items || data.items.length === 0) {
+            // Piped returns an array of items or an object with items depending on instance
+            const items = Array.isArray(data) ? data : (data.items || []);
+
+            if (items.length === 0) {
                 youtubeResults.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);"><p>No results found.</p></div>';
                 return;
             }
 
-            data.items.forEach(item => {
-                const video = item.snippet;
+            items.forEach(item => {
+                // Piped API format differs from YouTube API v3
+                const videoId = item.url ? item.url.split('v=')[1] : null;
+                if (!videoId) return;
+
+                const title = item.title;
+                const artist = item.uploaderName || 'Unknown Artist';
+                const thumb = item.thumbnail;
+
                 const card = document.createElement('div');
                 card.style.cssText = `
                     background: rgba(255, 255, 255, 0.03);
@@ -1138,26 +1152,27 @@
                     card.style.transform = 'translateY(0)';
                     card.style.background = 'rgba(255, 255, 255, 0.03)';
                 };
-                card.onclick = () => playSong(item.id.videoId, video.title, video.channelTitle, video.thumbnails.medium.url);
+                card.onclick = () => playSong(videoId, title, artist, thumb);
 
                 card.innerHTML = `
                     <div style="position: relative; aspect-ratio: 16/9; overflow: hidden;">
-                        <img src="${video.thumbnails.medium.url}" style="width: 100%; height: 100%; object-fit: cover;">
-                        <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">YouTube</div>
+                        <img src="${thumb}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <div style="position: absolute; bottom: 8px; right: 8px; background: rgba(0,0,0,0.8); padding: 2px 6px; border-radius: 4px; font-size: 0.7rem;">YT Music</div>
                     </div>
                     <div style="padding: 12px;">
-                        <h5 style="margin: 0 0 4px; font-size: 0.9rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: white;">${video.title}</h5>
-                        <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">${video.channelTitle}</p>
+                        <h5 style="margin: 0 0 4px; font-size: 0.9rem; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: white;">${title}</h5>
+                        <p style="margin: 0; font-size: 0.75rem; color: var(--text-muted);">${artist}</p>
                     </div>
                 `;
                 youtubeResults.appendChild(card);
             });
         } catch (error) {
-            console.error("YouTube API Error:", error);
+            console.error("Search Error:", error);
             youtubeResults.innerHTML = `
                 <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: #fda4af;">
                     <i class="fas fa-exclamation-circle" style="font-size: 2rem; margin-bottom: 1rem;"></i>
                     <p>Failed to fetch results: ${error.message}</p>
+                    <p style="font-size: 0.8rem; margin-top: 0.5rem; opacity: 0.7;">Try searching for something else or check your connection.</p>
                 </div>
             `;
         } finally {
