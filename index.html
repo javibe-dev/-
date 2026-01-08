@@ -862,6 +862,13 @@
             /* These will be overridden by JS to match placeholder */
         }
 
+        /* Hide the video container when the desktop section is collapsed */
+        #playerSection:not(.expanded) ~ #ytPlayerContainer:not(.in-mobile-overlay) {
+            opacity: 0 !important;
+            visibility: hidden !important;
+            pointer-events: none !important;
+        }
+
         #ytPlayerContainer.in-mobile-overlay {
             top: 15% !important;
             left: 50% !important;
@@ -2188,7 +2195,10 @@
 
         // Only sync if mobile overlay is NOT active
         if (overlay && !overlay.classList.contains('active')) {
-            if (container && placeholder) {
+            const playerSection = document.getElementById('playerSection');
+            const isExpanded = playerSection && playerSection.classList.contains('expanded');
+            
+            if (container && placeholder && isExpanded) {
                 const rect = placeholder.getBoundingClientRect();
                 if (rect.width > 0 && rect.height > 0) {
                     container.style.top = `${rect.top}px`;
@@ -2201,6 +2211,9 @@
                 } else {
                     container.classList.remove('active-desktop');
                 }
+            } else if (container) {
+                // If not expanded on desktop, hide the active-desktop class
+                container.classList.remove('active-desktop');
             }
         }
     };
