@@ -1382,24 +1382,44 @@
         try {
             // Step 1: Get VQD token from DDG
             const ddgUrl = `https://duckduckgo.com/?q=${encodeURIComponent(query)}&ia=videos`;
-            const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(ddgUrl)}`;
+            const proxy1 = `https://corsproxy.io/?${encodeURIComponent(ddgUrl)}`;
+            const proxy2 = `https://api.allorigins.win/get?url=${encodeURIComponent(ddgUrl)}`;
             
-            const response = await fetch(proxyUrl);
-            const text = await response.text();
-            const vqdMatch = text.match(/vqd="([^"]+)"/);
-            
-            if (!vqdMatch) throw new Error("Could not initialize search token.");
+            let text = "";
+            try {
+                const response = await fetch(proxy1);
+                if (!response.ok) throw new Error("Proxy 1 failed");
+                text = await response.text();
+            } catch (e) {
+                console.warn("JaVibe: Proxy 1 failed, trying Proxy 2", e);
+                const response = await fetch(proxy2);
+                const data = await response.json();
+                text = data.contents;
+            }
+
+            const vqdMatch = text.match(/vqd=["']([^"']+)["']/);
+            if (!vqdMatch) throw new Error("Could not initialize search token. Please try again.");
             const vqd = vqdMatch[1];
 
             // Step 2: Get video results using the token
             const searchUrl = `https://duckduckgo.com/v.js?q=${encodeURIComponent(query)}&vqd=${vqd}&p=-1&ad=1&l=us-en&s=0&sp=0&v7exp=a`;
             const searchProxy = `https://corsproxy.io/?${encodeURIComponent(searchUrl)}`;
             
-            const searchResponse = await fetch(searchProxy);
-            const data = await searchResponse.json();
+            let data = null;
+            try {
+                const searchResponse = await fetch(searchProxy);
+                if (!searchResponse.ok) throw new Error("Search proxy failed");
+                data = await searchResponse.json();
+            } catch (e) {
+                console.warn("JaVibe: Search proxy failed, trying AllOrigins", e);
+                const altSearchProxy = `https://api.allorigins.win/get?url=${encodeURIComponent(searchUrl)}`;
+                const altRes = await fetch(altSearchProxy);
+                const altData = await altRes.json();
+                data = JSON.parse(altData.contents);
+            }
 
-            if (!data.results || data.results.length === 0) {
-                throw new Error("No results found.");
+            if (!data || !data.results || data.results.length === 0) {
+                throw new Error("No results found for this search.");
             }
 
             const results = data.results.map(item => ({
