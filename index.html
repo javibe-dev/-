@@ -151,10 +151,9 @@
             z-index: 100;
             height: 100vh;
             height: 100svh; /* Better mobile height */
-            transition: transform 0.3s ease;
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s ease;
             overflow-y: auto;
-            position: sticky;
-            top: 0;
+            position: relative;
         }
 
         .sidebar-content {
@@ -273,6 +272,29 @@
         .nav-arrow { font-size: 0.7rem; opacity: 0.5; }
 
         /* Main Content */
+        /* Sidebar Collapsed State */
+        .sidebar.collapsed {
+            width: 80px;
+        }
+        .sidebar.collapsed .logo-text,
+        .sidebar.collapsed .logo-subtitle,
+        .sidebar.collapsed .nav-label,
+        .sidebar.collapsed .nav-item span,
+        .sidebar.collapsed .sidebar-footer p {
+            display: none;
+        }
+        .sidebar.collapsed .nav-item-content {
+            justify-content: center;
+            padding: 10px;
+        }
+        .sidebar.collapsed .nav-item-content i {
+            margin-right: 0;
+            font-size: 1.2rem;
+        }
+        .sidebar.collapsed .collapse-btn {
+            justify-content: center;
+        }
+
         .main-content {
             flex: 1;
             padding: 2rem 3rem;
@@ -723,7 +745,7 @@
                         <span class="logo-text">JaVibe</span>
                     </div>
                     <span class="logo-subtitle">Music's come in a great hands.</span>
-                    <button class="collapse-btn"><i class="fas fa-angles-left"></i> Collapse</button>
+                    <button class="collapse-btn" id="collapseBtn"><i class="fas fa-angles-left"></i> <span>Collapse</span></button>
                 </div>
 
                 <div class="nav-section">
@@ -1058,6 +1080,24 @@
     document.getElementById('toSignup').onclick = () => toggleView(true);
     document.getElementById('toLogin').onclick = () => toggleView(false);
 
+    // --- SIDEBAR COLLAPSE LOGIC ---
+    const collapseBtn = document.getElementById('collapseBtn');
+    // sidebar is already declared above; no need to redeclare
+    if (collapseBtn && sidebar) {
+        collapseBtn.onclick = () => {
+            sidebar.classList.toggle('collapsed');
+            const icon = collapseBtn.querySelector('i');
+            const span = collapseBtn.querySelector('span');
+            if (sidebar.classList.contains('collapsed')) {
+                icon.className = 'fas fa-angles-right';
+                span.style.display = 'none';
+            } else {
+                icon.className = 'fas fa-angles-left';
+                span.style.display = 'inline';
+            }
+        };
+    }
+
     window.showSection = (section) => {
         document.getElementById('homeSection').style.display = 'none';
         document.getElementById('dashboardSection').style.display = 'none';
@@ -1176,19 +1216,24 @@
             const screenWidth = window.screen.width;
             const screenHeight = window.screen.height;
             const scale = Math.min(screenWidth / BASE_W, screenHeight / BASE_H);
-
-            document.documentElement.style.width = `${BASE_W}px`;
-            document.documentElement.style.height = `${BASE_H}px`;
-            document.documentElement.style.overflowX = 'hidden';
-
-            document.body.style.width = `${BASE_W}px`;
-            document.body.style.transform = `scale(${scale})`;
-            document.body.style.transformOrigin = '0 0';
-            document.body.style.margin = '0';
-            document.body.style.padding = '0';
-            document.body.style.height = `${100 / scale}vh`;
-
-            console.log(`Micro-Desktop Active: Scaled to ${scale.toFixed(2)}`);
+        
+        // Force the viewport to match our BASE_W to prevent internal reflow
+        document.documentElement.style.width = `${BASE_W}px`;
+        document.documentElement.style.height = `${BASE_H}px`;
+        document.documentElement.style.overflow = 'hidden'; // FIX GHOST SCROLL
+        document.documentElement.style.position = 'fixed'; // FIX GHOST SCROLL
+        
+        document.body.style.width = `${BASE_W}px`;
+        document.body.style.height = `${BASE_H}px`;
+        document.body.style.overflow = 'hidden'; // FIX GHOST SCROLL
+        document.body.style.position = 'fixed'; // FIX GHOST SCROLL
+        document.body.style.transform = `scale(${scale})`;
+        document.body.style.transformOrigin = '0 0';
+        document.body.style.margin = '0';
+        document.body.style.padding = '0';
+        document.body.style.pointerEvents = 'auto'; // FIX: Ensure clicks work
+        
+        console.log(`Micro-Desktop Active: Scaled to ${scale.toFixed(2)}`);
         }
     }
     forceDesktopMode();
@@ -1521,6 +1566,12 @@
     spotifySearchInput.onkeypress = (e) => { if (e.key === 'Enter') searchSpotify(spotifySearchInput.value); };
 
     async function playSpotifyTrack(trackId, title, artist, thumb, previewUrl) {
+        console.log("Playing track:", title, trackId);
+        if (!spotifyAccessToken) {
+            alert("Please connect Spotify first to play full tracks!");
+            showSection('dashboard');
+            return;
+        }
         // Show player bar
         const playerBar = document.getElementById('musicPlayerBar');
         playerBar.style.display = 'flex';
