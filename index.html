@@ -1445,9 +1445,18 @@
     }
 
     let lastSearchQuery = "";
+    const searchCache = new Map();
+
     async function searchMusic(query) {
         if (!query) return;
         
+        // Check cache first
+        if (searchCache.has(query)) {
+            console.log(`JaVibe: Cache hit for "${query}"`);
+            displayResults(searchCache.get(query));
+            return;
+        }
+
         // FORCE CLEAR EVERYTHING
         const resultsEl = document.getElementById('musicResults');
         resultsEl.innerHTML = ''; 
@@ -1469,65 +1478,63 @@
             </div>
         `;
 
-        // IMPROVED SEARCH STRATEGY: Prioritize CORS-enabled mirrors and use proxy fallback
+        // PARALLEL STRATEGY: Fire all requests at once, take the first valid one.
         const apiInstances = [
             { url: 'https://pipedapi.moomoo.me', type: 'piped' },
             { url: 'https://api.piped.victr.me', type: 'piped' },
             { url: 'https://pipedapi.mha.fi', type: 'piped' },
             { url: 'https://pipedapi.adminforge.de', type: 'piped' },
             { url: 'https://pipedapi.astartes.nl', type: 'piped' },
-            { url: 'https://inv.zzls.xyz', type: 'invidious' },
             { url: 'https://invidious.projectsegfau.lt', type: 'invidious' },
-            { url: 'https://invidious.privacydev.net', type: 'invidious' }
-            // yewtu.be removed due to aggressive bot blocking/CORS issues
+            { url: 'https://invidious.privacydev.net', type: 'invidious' },
+            { url: 'https://invidious.flokinet.to', type: 'invidious' }
+            // inv.zzls.xyz removed due to "Go-away" bot protection
         ];
 
-        for (const instance of apiInstances) {
+        const fetchResults = async (instance) => {
+            const searchUrl = instance.type === 'piped' 
+                ? `${instance.url}/search?q=${encodeURIComponent(query)}&filter=videos`
+                : `${instance.url}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
+            
+            let data;
             try {
-                console.log(`JaVibe: Trying ${instance.type} search on ${instance.url}`);
-                const searchUrl = instance.type === 'piped' 
-                    ? `${instance.url}/search?q=${encodeURIComponent(query)}&filter=videos`
-                    : `${instance.url}/api/v1/search?q=${encodeURIComponent(query)}&type=video`;
-                
-                let data;
-                try {
-                    // Try direct fetch first (fastest)
-                    const res = await fetch(searchUrl);
-                    if (res.ok) {
-                        data = await res.json();
-                    } else {
-                        throw new Error(`Direct fetch failed: ${res.status}`);
-                    }
-                } catch (directErr) {
-                    console.warn(`JaVibe: Direct fetch failed for ${instance.url}, trying proxy fallback...`);
-                    // Fallback to proxy if direct fetch fails (CORS or blocking)
-                    data = await fetchWithProxy(searchUrl, 'json');
-                }
-                
-                const items = instance.type === 'piped' ? data.items : data;
-                
-                if (items && items.length > 0) {
-                    const results = items.slice(0, 20).map(item => ({
-                        videoId: item.videoId || (item.url ? item.url.split('v=')[1] : null),
-                        title: item.title,
-                        author: item.uploaderName || item.author,
-                        thumb: item.thumbnail || (item.videoThumbnails ? item.videoThumbnails[0].url : null)
-                    })).filter(r => r.videoId);
-
-                    if (results.length > 0) {
-                        displayResults(results);
-                        btn.disabled = false;
-                        btn.textContent = "Search Music";
-                        return;
-                    }
-                }
+                const res = await fetch(searchUrl);
+                if (!res.ok) throw new Error("Direct fetch failed");
+                data = await res.json();
             } catch (err) {
-                console.warn(`JaVibe: Instance ${instance.url} completely failed`, err);
-                continue;
+                // Try proxy as fallback if direct fails
+                data = await fetchWithProxy(searchUrl, 'json');
             }
+
+            const items = instance.type === 'piped' ? data.items : data;
+            if (!items || items.length === 0) throw new Error("No results");
+
+            const results = items.slice(0, 20).map(item => ({
+                videoId: item.videoId || (item.url ? item.url.split('v=')[1] : null),
+                title: item.title,
+                author: item.uploaderName || item.author,
+                thumb: item.thumbnail || (item.videoThumbnails ? item.videoThumbnails[0].url : null)
+            })).filter(r => r.videoId);
+
+            if (results.length === 0) throw new Error("No valid video IDs");
+            return results;
+        };
+
+        try {
+            // Promise.any takes the FIRST successful result
+            const fastestResults = await Promise.any(apiInstances.map(fetchResults));
+            
+            // Success!
+            searchCache.set(query, fastestResults);
+            displayResults(fastestResults);
+            btn.disabled = false;
+            btn.textContent = "Search Music";
+            return;
+        } catch (err) {
+            console.warn("JaVibe: All parallel API nodes failed, falling back to direct scrape.", err);
         }
 
-        // FALLBACK: If all ad-free nodes fail, try scraping YouTube directly via proxy
+        // FINAL FALLBACK: Direct Scrape via Proxy
         try {
             console.log(`JaVibe: All API nodes failed. Trying direct scrape fallback for "${query}"`);
             const ytUrl = `https://www.youtube.com/results?search_query=${encodeURIComponent(query)}&sp=EgIQAQ%253D%253D`; // filter for videos only
