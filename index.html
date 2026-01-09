@@ -1438,22 +1438,80 @@
                             </div>
                             <button onclick="togglePlayer()" class="icon-btn desktop-only-btn" style="color: white; font-size: 1.2rem;"><i class="fas fa-chevron-up" id="togglePlayerIcon"></i></button>
                         </div>
-                    </div>
             </div>
 
             <div id="profileSection" style="display: none;">
-                <h2>User Profile</h2>
-                <div class="welcome-card" style="margin-top: 1.5rem;">
-                    <p><strong>Email:</strong> <span id="profileEmail">...</span></p>
-                    <p><strong>Display Name:</strong> <span id="profileName">...</span></p>
-                    <p><strong>Account Status:</strong> Verified</p>
+                <div class="dashboard-header">
+                    <h1 class="dashboard-title"><i class="fas fa-user-circle" style="color: var(--primary); font-size: 1.8rem;"></i> User Profile</h1>
+                    <p class="dashboard-subtitle">👤 Manage your account information and preferences.</p>
+                </div>
+                
+                <div class="welcome-card" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); padding: 2.5rem; border-radius: 24px; backdrop-filter: blur(10px);">
+                    <div style="display: flex; align-items: center; gap: 20px; margin-bottom: 2rem;">
+                        <div style="width: 80px; height: 80px; background: var(--primary); border-radius: 20px; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 700; color: white; box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);" id="profileAvatarLetter">
+                            U
+                        </div>
+                        <div>
+                            <h2 style="margin: 0; font-size: 1.5rem;" id="profileDisplayNameDisplay">User Name</h2>
+                            <p style="margin: 5px 0 0; color: var(--text-muted);" id="profileEmailDisplay">user@example.com</p>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 1rem;">
+                        <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+                            <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 8px;">Email Address</p>
+                            <p style="font-weight: 600;" id="profileEmail">...</p>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+                            <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 8px;">Display Name</p>
+                            <p style="font-weight: 600;" id="profileName">...</p>
+                        </div>
+                        <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid rgba(255,255,255,0.05);">
+                            <p style="color: var(--text-muted); font-size: 0.8rem; text-transform: uppercase; margin-bottom: 8px;">Account Status</p>
+                            <p style="font-weight: 600; color: #10b981;"><i class="fas fa-check-circle"></i> Verified</p>
+                        </div>
+                    </div>
+
+                    <div style="margin-top: 2rem; display: flex; gap: 15px; flex-wrap: wrap;">
+                        <button onclick="handleUsernameChange()" class="primary-btn"><i class="fas fa-edit"></i> Edit Profile</button>
+                        <button onclick="handleLogout()" class="primary-btn" style="background: rgba(239, 68, 68, 0.1); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.2);"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
+                    </div>
                 </div>
             </div>
 
             <div id="settingsSection" style="display: none;">
-                <h2>Account Settings</h2>
-                <div class="welcome-card" style="margin-top: 1.5rem;">
-                    <p>Account management and other settings are currently in development.</p>
+                <div class="dashboard-header">
+                    <h1 class="dashboard-title"><i class="fas fa-cog" style="color: var(--text-muted); font-size: 1.8rem;"></i> Account Settings</h1>
+                    <p class="dashboard-subtitle">⚙️ Configure your app experience and security.</p>
+                </div>
+                
+                <div class="welcome-card" style="background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); padding: 2.5rem; border-radius: 24px; backdrop-filter: blur(10px);">
+                    <div style="display: flex; flex-direction: column; gap: 20px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <div>
+                                <h4 style="margin: 0; font-size: 1.1rem;">Email Notifications</h4>
+                                <p style="margin: 5px 0 0; color: var(--text-muted); font-size: 0.9rem;">Receive updates about your account activity.</p>
+                            </div>
+                            <div style="width: 40px; height: 20px; background: var(--primary); border-radius: 20px; position: relative; cursor: pointer;">
+                                <div style="width: 16px; height: 16px; background: white; border-radius: 50%; position: absolute; right: 2px; top: 2px;"></div>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                            <div>
+                                <h4 style="margin: 0; font-size: 1.1rem;">Dark Mode</h4>
+                                <p style="margin: 5px 0 0; color: var(--text-muted); font-size: 0.9rem;">Toggle between light and dark theme.</p>
+                            </div>
+                            <div style="width: 40px; height: 20px; background: var(--primary); border-radius: 20px; position: relative; cursor: pointer;">
+                                <div style="width: 16px; height: 16px; background: white; border-radius: 50%; position: absolute; right: 2px; top: 2px;"></div>
+                            </div>
+                        </div>
+
+                        <div style="background: rgba(255,255,255,0.02); padding: 20px; border-radius: 16px; border: 1px solid rgba(99, 102, 241, 0.2); margin-top: 10px;">
+                            <h4 style="margin: 0 0 10px; font-size: 1rem; color: var(--primary);">Developer Mode</h4>
+                            <p style="margin: 0; color: var(--text-muted); font-size: 0.85rem; line-height: 1.5;">Account management and advanced security settings are currently being optimized for the best experience. Check back soon for more features!</p>
+                        </div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -1673,6 +1731,11 @@
                     
                     document.getElementById('profileEmail').textContent = user.email;
                     document.getElementById('profileName').textContent = user.displayName || 'N/A';
+                    
+                    // Update new profile section elements
+                    if (document.getElementById('profileEmailDisplay')) document.getElementById('profileEmailDisplay').textContent = user.email;
+                    if (document.getElementById('profileDisplayNameDisplay')) document.getElementById('profileDisplayNameDisplay').textContent = displayName;
+                    if (document.getElementById('profileAvatarLetter')) document.getElementById('profileAvatarLetter').textContent = displayName.charAt(0).toUpperCase();
                 }, 400);
             } else {
                 // Logged in but not verified
@@ -1721,7 +1784,14 @@
         
         const sectionId = `${section}Section`;
         const targetSection = document.getElementById(sectionId);
-        if (targetSection) targetSection.style.display = 'block';
+        if (targetSection) {
+            targetSection.style.display = 'block';
+            // Scroll main content to top
+            const mainContent = document.querySelector('.main-content');
+            if (mainContent) {
+                mainContent.scrollTo({ top: 0, behavior: 'smooth' });
+            }
+        }
 
         // Clear search results when switching to dashboard (Music)
         if (section === 'dashboard') {
