@@ -1858,7 +1858,7 @@
         const desktopIcon = document.querySelector('#desktopPlayBtn i');
 
         if (!player || typeof player.getPlayerState !== 'function') {
-            // If player isn't ready, try to initialize it from the existing iframe
+            console.log("Player not ready, attempting re-init...");
             const iframe = document.getElementById('adfree-player');
             if (iframe && iframe.src.includes('youtube.com')) {
                 player = new YT.Player('adfree-player', {
@@ -1866,6 +1866,7 @@
                         'onStateChange': onPlayerStateChange,
                         'onReady': (e) => {
                             e.target.playVideo();
+                            isPlaying = true;
                             startProgressLoop();
                         }
                     }
@@ -1877,16 +1878,19 @@
         const state = player.getPlayerState();
         if (state === YT.PlayerState.PLAYING) {
             player.pauseVideo();
+            isPlaying = false;
             if (mobileIcon) mobileIcon.className = 'fas fa-play';
             if (desktopIcon) desktopIcon.className = 'fas fa-play';
         } else {
             player.playVideo();
+            isPlaying = true;
             if (mobileIcon) mobileIcon.className = 'fas fa-pause';
             if (desktopIcon) desktopIcon.className = 'fas fa-pause';
         }
     };
 
     function onPlayerStateChange(event) {
+        console.log("Player State Change:", event.data);
         const mobilePlayBtn = document.getElementById('mobilePlayBtn');
         const desktopPlayBtn = document.getElementById('desktopPlayBtn');
         const mobileIcon = mobilePlayBtn ? mobilePlayBtn.querySelector('i') : null;
@@ -1897,13 +1901,19 @@
             if (mobileIcon) mobileIcon.className = 'fas fa-pause';
             if (desktopIcon) desktopIcon.className = 'fas fa-pause';
             startProgressLoop();
-        } else if (event.data === YT.PlayerState.PAUSED || event.data === YT.PlayerState.ENDED) {
+        } else if (event.data === YT.PlayerState.PAUSED) {
+            isPlaying = false;
+            if (mobileIcon) mobileIcon.className = 'fas fa-play';
+            if (desktopIcon) desktopIcon.className = 'fas fa-play';
+            stopProgressLoop();
+        } else if (event.data === YT.PlayerState.ENDED) {
             isPlaying = false;
             if (mobileIcon) mobileIcon.className = 'fas fa-play';
             if (desktopIcon) desktopIcon.className = 'fas fa-play';
             stopProgressLoop();
             
-            if (event.data === YT.PlayerState.ENDED && isLooping) {
+            if (isLooping) {
+                console.log("Looping enabled, restarting video...");
                 player.playVideo();
             }
         }
@@ -1958,8 +1968,15 @@
     function startProgressLoop() {
         if (progressInterval) clearInterval(progressInterval);
         progressInterval = setInterval(() => {
-            if (player && player.getCurrentTime && typeof player.getCurrentTime === 'function' && isPlaying) {
-                updateProgressBar(player.getCurrentTime(), player.getDuration());
+            if (player && typeof player.getCurrentTime === 'function') {
+                // If isPlaying is false but player is actually playing, update isPlaying
+                if (!isPlaying && player.getPlayerState && player.getPlayerState() === YT.PlayerState.PLAYING) {
+                    isPlaying = true;
+                }
+                
+                if (isPlaying) {
+                    updateProgressBar(player.getCurrentTime(), player.getDuration());
+                }
             }
         }, 500);
     }
@@ -1981,6 +1998,12 @@
     };
 
     function updateProgressBar(current, total) {
+        if (!total || total <= 0) {
+            // Try to get duration if not provided
+            if (player && typeof player.getDuration === 'function') {
+                total = player.getDuration();
+            }
+        }
         if (!total || total <= 0) return;
         
         const pct = (current / total) * 100;
@@ -1992,8 +2015,12 @@
         const currentTimeEl = document.getElementById('currentTime');
         const durationEl = document.getElementById('duration');
         if (progressBar) progressBar.style.width = `${pct}%`;
-        if (currentTimeEl) currentTimeEl.textContent = formattedCurrent;
-        if (durationEl) durationEl.textContent = formattedTotal;
+        if (currentTimeEl) {
+            currentTimeEl.textContent = formattedCurrent;
+        }
+        if (durationEl) {
+            durationEl.textContent = formattedTotal;
+        }
 
         // Mobile
         const mobileProgressBar = document.getElementById('mobileProgressBar');
@@ -2284,17 +2311,17 @@
             window.checkMarquee();
         }, 100);
 
-        // Update iframe src
+        // Update iframe src only if player is not initialized
         const iframe = document.getElementById('adfree-player');
         const videoSrc = `https://www.youtube.com/embed/${videoId}?autoplay=1&enablejsapi=1&modestbranding=1&rel=0&vq=hd720`;
         
-        if (iframe && iframe.src !== videoSrc) {
-            iframe.src = videoSrc;
-            checkIframeLoading();
-        }
-
-        // YouTube Player Initialization
+        // YouTube Player Initialization or Update
         if (!player || typeof player.loadVideoById !== 'function') {
+            if (iframe && iframe.src !== videoSrc) {
+                iframe.src = videoSrc;
+                checkIframeLoading();
+            }
+
             player = new YT.Player('adfree-player', {
                 videoId: videoId,
                 playerVars: {
@@ -2308,6 +2335,7 @@
                     'onStateChange': onPlayerStateChange,
                     'onReady': (e) => {
                         e.target.playVideo();
+                        isPlaying = true;
                         startProgressLoop();
                         if (fallback) fallback.style.display = 'none';
                     },
@@ -2319,9 +2347,14 @@
             });
         } else {
             try {
+                console.log("Using existing player to load video:", videoId);
                 player.loadVideoById(videoId);
+                isPlaying = true;
+                startProgressLoop();
+                if (fallback) fallback.style.display = 'none';
             } catch (err) {
                 console.warn("Re-initializing player due to error:", err);
+                if (iframe) iframe.src = videoSrc;
                 player = new YT.Player('adfree-player', {
                     videoId: videoId,
                     playerVars: {
@@ -2335,6 +2368,7 @@
                         'onStateChange': onPlayerStateChange,
                         'onReady': (e) => {
                             e.target.playVideo();
+                            isPlaying = true;
                             startProgressLoop();
                             if (fallback) fallback.style.display = 'none';
                         },
