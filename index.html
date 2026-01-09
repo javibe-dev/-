@@ -1140,39 +1140,40 @@
         }
 
         @media (max-width: 768px) {
-              #togglePlayerIcon {
-                  display: none !important;
-              }
-              #playerSection {
-                  display: none !important;
-              }
+            #togglePlayerIcon, 
+            #playerSection,
+            .collapse-btn, 
+            #collapseBtn,
+            .desktop-only-btn,
+            [class*="fa-chevron"],
+            [class*="fa-angle"] {
+                display: none !important;
+            }
+
             #musicPlayerBar {
                  padding-bottom: env(safe-area-inset-bottom);
                  cursor: pointer;
-             }
-             .desktop-only-btn {
-                 display: none !important;
-             }
+            }
 
-             /* Hide song title and artist in search results on mobile */
-             .music-card-content {
-                 display: none !important;
-             }
-             .music-card {
-                 background: transparent !important;
-                 border: none !important;
-                 padding: 0 !important;
-             }
-             .music-card img {
-                 margin-bottom: 0 !important;
-                 border-radius: 12px !important;
-             }
-             .results-grid {
+            /* Ensure search results ONLY show thumbnails */
+            .music-card-content {
+                display: none !important;
+            }
+            .results-grid {
                  grid-template-columns: repeat(3, 1fr) !important;
                  gap: 8px !important;
                  padding: 10px !important;
-             }
-         }
+            }
+            .music-card img {
+                 margin-bottom: 0 !important;
+                 border-radius: 12px !important;
+            }
+            .music-card {
+                background: transparent !important;
+                border: none !important;
+                padding: 0 !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -2489,3 +2490,4 @@
 
 </body>
 </html>
+        
