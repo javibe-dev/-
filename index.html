@@ -1140,11 +1140,14 @@
         }
 
         @media (max-width: 768px) {
+            /* Hide desktop-specific player elements on mobile */
+            #togglePlayerIcon, 
+            #playerSection,
             .desktop-only-btn {
                 display: none !important;
             }
 
-            /* Ensure the collapse icon in mobile player is visible */
+            /* Ensure the collapse icon in mobile player OVERLAY is visible */
             #mobilePlayerOverlay .fa-chevron-down {
                 display: block !important;
                 color: white !important;
