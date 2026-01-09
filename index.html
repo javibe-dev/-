@@ -1460,10 +1460,11 @@
     </div>
 
     <div id="mobilePlayerOverlay">
-        <!-- FORCE: Clicking the entire top header closes the player on mobile -->
-        <div class="mobile-player-header" onclick="toggleMobilePlayer(false)" style="cursor: pointer; position: relative;">
-            <!-- NO BUTTONS HERE AT ALL -->
-            <div class="mobile-player-tabs" onclick="event.stopPropagation()" style="position: absolute; left: 50%; transform: translateX(-50%);">
+        <div class="mobile-player-header">
+            <button class="mobile-secondary-btn" onclick="toggleMobilePlayer(false)">
+                <i class="fas fa-chevron-down"></i>
+            </button>
+            <div class="mobile-player-tabs">
                 <button id="mobileTabAudio" class="mobile-tab-btn active" onclick="switchMobileTab('audio')">
                     <i class="fas fa-headphones"></i> Audio
                 </button>
@@ -1471,7 +1472,9 @@
                     <i class="fas fa-play-circle"></i> Video
                 </button>
             </div>
-            <!-- NO BUTTONS HERE AT ALL -->
+            <button class="mobile-secondary-btn">
+                <i class="fas fa-ellipsis-v"></i>
+            </button>
         </div>
 
         <div class="mobile-player-content">
